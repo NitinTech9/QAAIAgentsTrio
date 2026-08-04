@@ -79,7 +79,7 @@ Full conventions live in `CONTRIBUTING/testing-standards/` — read the relevant
 
 ## AI skills and Jira agents
 
-Local skills (no Jira needed): `/qa-init` (first-time project scaffolding — Cypress+JS or Playwright+JS, chosen at runtime; `/qa-init demo` for a no-backend sandbox), `/qa-help` (setup-state checker — "what do I do next?"), `/qa` (run + fix + report), `/qa-only` (read-only), `/fix-test`, `/generate-api-test`, `/generate-ui-test`, `/add-test-cases`, `/audit-coverage`, `/doctor`.
+Local skills (no Jira needed): `/qa-init` (first-time project scaffolding — Cypress+JS or Playwright+JS, chosen at runtime; `/qa-init demo` for a no-backend sandbox), `/qa-help` (setup-state checker — "what do I do next?"), `/qa-selftest` (regression suite for the `.claude/` folder itself — run after adapting or upgrading the framework; `quick` for the deterministic phases only), `/qa` (run + fix + report), `/qa-only` (read-only), `/fix-test`, `/generate-api-test`, `/generate-ui-test`, `/add-test-cases`, `/audit-coverage`, `/doctor`.
 
 All four agents accept `auto` (non-interactive: no prompts, Jira posting skipped) and `auto-post` (with `auto`: allow the Jira writes) for CI/scheduled runs — see `ci/qa-pr-gate.example.yml` for a GitHub Actions PR gate. `.claude/project-config.json` is validated against `.claude/schemas/project-config.schema.json` (editors pick it up via the config's `$schema` key; `/doctor` Check 0 enforces it).
 

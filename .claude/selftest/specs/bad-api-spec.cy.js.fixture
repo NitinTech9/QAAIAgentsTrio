@@ -1,0 +1,30 @@
+describe("Test Scenario: SELFTEST-1 Broken Widgets API Tests", () => {
+    let sessionCookie;
+
+    beforeEach(() => {
+        cy.loginAndGetSessionCookie().then(() => {
+            cy.get("@sessionCookie").then((c) => { sessionCookie = c; });
+        });
+    });
+
+    it("accepts a server error — Check 9 must flag this", () => {
+        cy.api({ method: "GET", url: "/api/widgets", failOnStatusCode: false }).then((response) => {
+            expect(response.status).to.be.oneOf([
+                200,
+                500
+            ]);
+        });
+    });
+
+    it("passes whether the call works or not — Check 9b must flag this", () => {
+        cy.api({ method: "GET", url: "/api/widgets/1", failOnStatusCode: false }).then((response) => {
+            expect(response.status).to.be.oneOf([200, 404]);
+        });
+    });
+
+    it("mutates without proving persistence — Check 11 must flag this", () => {
+        cy.api({ method: "POST", url: "/api/widgets", body: { name: "w" }, failOnStatusCode: false }).then((response) => {
+            expect(response.status).to.equal(201);
+        });
+    });
+});

@@ -1,0 +1,14 @@
+{
+  "key": "SELFTEST-1",
+  "summary": "Selftest: widgets API coverage",
+  "issuetype": "Story",
+  "status": "In Progress",
+  "description": "Add coverage for the widgets API: list widgets, create a widget, and reject unauthenticated access. This is a bundled fake ticket used by /qa-selftest — it is not backed by Jira and its endpoints are fictional.",
+  "comments": [
+    {
+      "author": "QA Lead",
+      "created": "2026-01-05T10:00:00Z",
+      "body": "Confirmed with the team: POST /api/widgets must persist to the widgets table, and both endpoints require a session."
+    }
+  ]
+}

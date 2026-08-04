@@ -1,0 +1,54 @@
+describe("Test Scenario: SELFTEST-1 Widgets API Tests", () => {
+    let sessionCookie;
+    let csrfToken;
+    let widgetId;
+
+    beforeEach(() => {
+        cy.loginAndGetSessionCookie().then(() => {
+            cy.get("@sessionCookie").then((c) => { sessionCookie = c; });
+            cy.get("@csrfToken").then((t) => { csrfToken = t; });
+        });
+    });
+
+    afterEach(() => {
+        cy.clearCookies();
+    });
+
+    it("[SELFTEST-1] Test Case 01: Validate GET /api/widgets returns 200", { tags: ["@PR", "@Smoke"] }, () => {
+        cy.api({
+            method: "GET",
+            url: "/api/widgets",
+            headers: { Cookie: sessionCookie },
+            failOnStatusCode: false,
+        }).then((response) => {
+            expect(response.status).to.equal(200);
+        });
+    });
+
+    it("[SELFTEST-1] Test Case 02: Validate POST /api/widgets creates and persists", { tags: ["@Regression"] }, () => {
+        cy.api({
+            method: "POST",
+            url: "/api/widgets",
+            headers: { Cookie: sessionCookie, "x-csrf-token": csrfToken },
+            body: { name: "selftest widget" },
+            failOnStatusCode: false,
+        }).then((response) => {
+            expect(response.status).to.equal(201);
+            widgetId = response.body.id;
+            cy.task("queryDb", `select id from widgets where id = ${widgetId}`).then((rows) => {
+                expect(rows.length).to.equal(1);
+            });
+        });
+    });
+
+    it("[SELFTEST-1] Test Case 03: Validate unauthenticated request returns 401 or 403", { tags: ["@Regression"] }, () => {
+        cy.clearCookies();
+        cy.api({
+            method: "GET",
+            url: "/api/widgets",
+            failOnStatusCode: false,
+        }).then((response) => {
+            expect(response.status).to.be.oneOf([401, 403]);
+        });
+    });
+});
