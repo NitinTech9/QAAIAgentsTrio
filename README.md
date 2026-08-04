@@ -39,6 +39,8 @@ AI-AUTOMATION-GUIDE.md   # full reference for the agent pipeline and commands
 
 **Lost at any point?** Run `/qa-help` — it inspects your actual setup state (config, scaffold, env file, MCP connections, per-ticket pipeline progress) and prints a personalized "here's your next step" checklist.
 
+**Adapted or upgraded the framework?** Run `/qa-selftest` — a regression suite for the `.claude/` folder itself. It checks static integrity (config, cross-references, state contracts), round-trips the validate-spec hard gates against bundled good/bad fixture specs, exercises the atomic-write/locking mechanics, and can dry-run the full generation pipeline offline against a bundled fake ticket (`SELFTEST-1`) — no Jira, no backend needed.
+
 **Adapting an existing test suite:**
 
 1. **Copy the `.claude/` folder** into the root of your test automation repo (or fork this repo as your starting point).

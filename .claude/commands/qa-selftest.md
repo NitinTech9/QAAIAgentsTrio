@@ -1,0 +1,88 @@
+---
+description: Regression suite for the .claude/ folder itself — verifies static integrity, the validate-spec hard-gate scripts, state/locking mechanics, and (optionally) a full offline pipeline dry-run against a bundled fake ticket. Run after adapting or upgrading the framework, before pointing it at real tickets.
+allowed-tools: [Read, Write, Edit, Bash, Glob, Grep]
+argument-hint: '[optional: quick|keep]'
+---
+
+# QA Framework Self-Test (`/qa-selftest`)
+
+You verify that **the framework itself** still works — not the product under test. Everything runs offline: no Jira, no browser, no backend, no network. Use the bundled fixtures in `.claude/selftest/`.
+
+**Flags:** `quick` — run Phases 1–3 only (deterministic checks, ~no generation cost). `keep` — leave Phase 4's dry-run artifacts in place for inspection instead of cleaning up.
+
+**Principles:**
+- Test what is actually shipped: whenever a phase needs a script or protocol, **extract it from the command file it lives in** (e.g. the gate scripts from `validate-spec.md`, the atomic-write snippet from `manual-test-generator.md`) — never use a copy embedded here, or drift would go undetected.
+- Collect every failure before reporting — don't stop at the first one. Any failure ⇒ overall verdict is ❌.
+- Work in a temp dir from `mktemp -d` for Phases 2–3; only Phase 4 touches configured paths (and cleans up after itself).
+- **Shell gotcha:** the harness shell may be zsh, which does NOT word-split unquoted variables — iterate multi-line lists with `... | while read -r x; do ...; done`, never `for x in $var`. A mis-split loop produces false MISSING results.
+
+## Phase 1 — Static integrity
+
+Read `.claude/project-config.json` (+ `project-config.local.json` if present). Then check:
+
+1. **JSON health:** every `.claude/**/*.json` parses (config, schemas, local example); if `{config.paths.knowledge}` exists, its `*.json` seeds parse too.
+2. **Config shape:** required keys per `.claude/schemas/project-config.schema.json` (structural `node -e` check; use ajv only if already installed). `testFramework` ∈ {cypress, playwright} and `.claude/templates/{testFramework}-javascript.md` exists.
+3. **Cross-references resolve:**
+   - Every `.claude/commands/<name>.md` referenced by the four agent files exists.
+   - Files referenced by skills exist: `.claude/skills/qa/references/issue-taxonomy.md`, `.claude/skills/qa/templates/qa-report-template.md`, both `.claude/templates/*-javascript.md`.
+   - Every distinct `{config.paths.<key>}` placeholder used anywhere in `.claude/commands/` and `.claude/agents/` (`grep -rhoE '\{config\.paths\.[A-Za-z]+\}' | sort -u`) names a key that exists in the config's `paths` object. Skip notation examples (a single capital letter like `{config.paths.X}` in a sentence *defining* the placeholder syntax); read the surrounding line before failing any hit.
+   - The selftest fixtures themselves exist: `SELFTEST-1.json`, `SELFTEST-1-analysis.md`, `SELFTEST-1.md`, and both `specs/*.fixture` files.
+4. **Pipeline-state contract:** each step key declared in an agent's canonical state JSON is also used by its owning command file (`fetch-ticket`, `analyze-code`, `create-manual-test-cases`, `post-tests-to-jira`, `create-api-automated-test-cases`, `create-schema-validation`, `validate-api-spec`, `validate-ui-spec`, `run-api-tests`, `run-ui-tests`, `explore-live-app`, `create-ui-automated-test-cases`, `generate-postman-collection`).
+5. **Lock protocol declared everywhere:** all four agents reference the Run Lock protocol and their own domain (`manual`, `api`, `ui`, `postman`); the canonical atomic-write snippet exists in `manual-test-generator.md`.
+
+## Phase 2 — Hard-gate validator scripts (fixture round-trip)
+
+The three hard gates in `validate-spec.md` are executable scripts — this phase proves they still catch what they must catch and pass what they must pass.
+
+1. `TMP=$(mktemp -d)`; copy the fixtures there with their real names:
+   `cp .claude/selftest/specs/good-api-spec.cy.js.fixture $TMP/good.cy.js` (same for bad).
+2. `node --check` both files (they must be valid JS).
+3. **Extract from `.claude/commands/validate-spec.md`** the three embedded `node -e` scripts — Check 9 (no 5xx accepted), Check 9b (no ambiguous 2xx/4xx `oneOf`), Check 11 (DB assertion on mutation) — and run each against both files. Expectations (8 total):
+
+| Script | `good.cy.js` | `bad.cy.js` |
+|---|---|---|
+| syntax (`node --check`) | exit 0 | exit 0 |
+| Check 9 | exit 0 | exit 1, message mentions 5xx |
+| Check 9b | exit 0 | exit 1, mentions ambiguous oneOf |
+| Check 11 | exit 0 | exit 1, mentions missing DB assertion |
+
+Any deviation means someone changed a gate script (or a fixture) — report which check, which direction, and the actual output.
+
+## Phase 3 — State & locking mechanics
+
+Using the **canonical atomic-write snippet extracted from `manual-test-generator.md`**, in the same `$TMP`:
+
+1. **Create-from-missing:** run the snippet against a nonexistent `state.json` with `{"steps":{"fetch-ticket":"done"}}` → file exists, valid JSON, step recorded, `lastUpdated` set.
+2. **Lock + step in one write:** update with an `api` lock and `{"steps":{"run-api-tests":"done"}}` → both present, earlier keys preserved.
+3. **Domain independence:** add a `ui` lock → `api` lock untouched.
+4. **Release:** update `{"locks":{"api":null}}` → `api` gone, `ui` remains.
+5. **Staleness math:** write a lock with `lockedAt` 2 hours ago; compute age in minutes via `node` → correctly classified stale (>60); a just-written lock → fresh.
+6. **Corrupt-file tolerance:** overwrite `state.json` with garbage (`not-json{{`), run the snippet → it recovers to valid JSON rather than crashing (this validates the temp→rename write path can't be wedged by a torn file).
+
+6 expectations; assert each with exit codes / `node -e` JSON reads.
+
+## Phase 4 — Pipeline dry-run (skipped with `quick`)
+
+Runs the real generation pipeline offline against `SELFTEST-1`. **Precondition:** the configured paths exist (`paths.ticketContext`, `paths.manualCases`, `paths.apiTests`) — in the bare framework repo they don't, so report `SKIPPED — no scaffolded suite here; run /qa-init first` (that is a valid selftest outcome, not a failure).
+
+1. **Announce** that SELFTEST-1 artifacts will be written into the configured paths and removed afterward (unless `keep`).
+2. **Seed:** copy `SELFTEST-1.json` and `SELFTEST-1-analysis.md` into `{config.paths.ticketContext}/`, and `SELFTEST-1.md` into `{config.paths.manualCases}/`. (Pre-seeding makes `fetch-ticket`/`analyze-code` self-heal steps no-ops — that's what keeps this offline.)
+3. **Generate:** read and execute `.claude/commands/create-api-automated-test-cases.md` with `$ARGUMENTS = SELFTEST-1`. The endpoints are fictional — do NOT probe them over the network; generate purely from the seeded context per the framework template.
+4. **Assert on the artifact:** a spec file for SELFTEST-1 exists under `{config.paths.apiTests}` (or `{config.paths.jiraTicketTests}`); it passes `node --check`; every test title carries the ticket ID; tags present; an unauthenticated-rejection test exists; the POST case carries a DB assertion (or the spec honors `dbVerification: false`).
+5. **Validate:** read and execute `.claude/commands/validate-spec.md` with `$ARGUMENTS = "SELFTEST-1 api"` → must finish with no hard-gate hits. Skip `create-schema-validation` (it requires capturing live 200 responses — impossible offline; note it).
+6. **Cleanup (unless `keep`):** delete every SELFTEST-1 artifact this phase created — seeded context files, pipeline state (`SELFTEST-1-pipeline-state.json`), the generated spec(s), any drafts — and list each deleted path. With `keep`, list the retained paths instead.
+
+## Report
+
+```
+# QA Framework Self-Test — <date>
+
+Phase 1 — Static integrity:        PASS (NN checks)
+Phase 2 — Hard-gate validators:    PASS (8/8 expectations)
+Phase 3 — State & locking:         PASS (6/6)
+Phase 4 — Pipeline dry-run:        PASS | SKIPPED (<reason>) | FAIL
+
+Verdict: ✅ framework healthy — safe to point at real tickets
+```
+
+On failure: `❌ N check(s) failed`, then one line per failure — phase, check, file involved, actual vs expected, and the most likely cause (usually a recent edit to the named command/agent file — check `git log -p <file>`). Do not attempt to auto-fix framework files from this command; report only.

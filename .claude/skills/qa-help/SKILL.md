@@ -56,4 +56,4 @@ You answer one question: **"what should this person do next?"** Inspect the actu
 3. Run /doctor to confirm, then @manual-test-generator <TICKET-ID>
 ```
 
-Keep it to one screen. Every ✗/⚠ line carries its exact remediation command. End with the single most important next action, not a menu. If everything passes and no ticket was given, suggest the demo (`/qa-init demo` in a scratch repo) or `@manual-test-generator <TICKET-ID>` as the starting point.
+Keep it to one screen. Every ✗/⚠ line carries its exact remediation command. End with the single most important next action, not a menu. If everything passes and no ticket was given, suggest the demo (`/qa-init demo` in a scratch repo) or `@manual-test-generator <TICKET-ID>` as the starting point — and if the `.claude/` files were recently adapted or upgraded, `/qa-selftest quick` to verify the framework itself.
