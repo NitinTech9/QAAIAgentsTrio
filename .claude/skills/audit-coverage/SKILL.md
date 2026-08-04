@@ -11,13 +11,13 @@ You perform a full test coverage audit by comparing the swagger.json API spec ag
 
 ## STEP 1 — Load the swagger specs
 
-Read both swagger files:
-- **Whiz (main TCA platform):** `cypress/fixtures/swagger.json`
-- **Phizz (claims platform):** `cypress/fixtures/phizz-swagger.json`
+Read the swagger file(s):
+- **Primary app:** `cypress/fixtures/swagger.json`
+- **Secondary app (if your suite tests one):** `cypress/fixtures/secondary-swagger.json`
 
-Extract every endpoint as: `METHOD /path` (e.g. `GET /api/stores`, `POST /api/contracts`)
+Extract every endpoint as: `METHOD /path` (e.g. `GET /api/stores`, `POST /api/orders`)
 
-Keep Whiz and Phizz endpoints separate in the analysis — they are different backends.
+If there are two backends, keep their endpoints separate in the analysis.
 
 ---
 
@@ -30,9 +30,9 @@ pattern: "cypress/e2e/API/**/*.cy.js"
 
 For each file, read it and extract the `cy.api({ method, url })` calls to build a list of covered endpoints.
 
-Separate tests by backend:
-- Files in `cypress/e2e/API/phizz-module/` → Phizz coverage
-- All other API test folders → Whiz coverage
+Separate tests by backend (if there are two):
+- Files in the secondary app's module folder (e.g. `cypress/e2e/API/<secondary-app>-module/`) → secondary coverage
+- All other API test folders → primary coverage
 
 ---
 
@@ -69,15 +69,15 @@ Group missing endpoints by their natural module area:
 - GET  /api/sales/{id}
 ...
 
-## ❌ Missing — lca-module (12 endpoints)
-- GET  /api/lca/invoices
+## ❌ Missing — payments-module (12 endpoints)
+- GET  /api/payments/invoices
 ...
 ```
 
 ### Priority recommendation
 
 After listing all gaps, recommend which modules to tackle first based on:
-1. Business criticality (core sales/contracts flow = highest)
+1. Business criticality (your core revenue flow = highest)
 2. Number of missing endpoints per module
 3. Whether existing partial tests can be quickly completed
 

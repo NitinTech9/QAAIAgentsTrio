@@ -16,7 +16,7 @@ Never hardcode paths, Jira config, or auth details.
 ## Ticket ID Gate
 
 **If the user's message does not contain a Jira ticket ID matching `[A-Z]+-[0-9]+`, ask:**
-> "Please provide a Jira ticket ID to generate API automation tests for (e.g. `TCA-1234`)"
+> "Please provide a Jira ticket ID to generate API automation tests for (e.g. `PROJ-1234`)"
 
 **Wait for their response before proceeding.** Record it as `TICKET_ID`.
 
@@ -24,10 +24,10 @@ Never hardcode paths, Jira config, or auth details.
 
 Parse the user's message for optional flags after the ticket ID:
 
-- **`force`** (case-insensitive) — e.g. `TCA-1234 force` → set `FORCE_MODE = true` (default: `false`). Resets all pipeline steps for this agent to `pending`.
-- **`pr:<number>`** — e.g. `TCA-1234 pr:42` → set `PR_FLAG = "pr:42"` (default: `null`). Passed to `/analyze-code` to scope source scan to PR-changed files.
+- **`force`** (case-insensitive) — e.g. `PROJ-1234 force` → set `FORCE_MODE = true` (default: `false`). Resets all pipeline steps for this agent to `pending`.
+- **`pr:<number>`** — e.g. `PROJ-1234 pr:42` → set `PR_FLAG = "pr:42"` (default: `null`). Passed to `/analyze-code` to scope source scan to PR-changed files.
 
-Flags can be combined: `TCA-1234 force pr:42`
+Flags can be combined: `PROJ-1234 force pr:42`
 
 ## Manual Test Cases Hard Gate
 
@@ -111,7 +111,7 @@ Pipeline key: `create-api-automated-test-cases`
 Read and execute `.claude/commands/create-schema-validation.md` with `$ARGUMENTS = TICKET_ID`. It adds,
 for every endpoint the Step 1 spec automates that returns a 200 JSON body, a schema fixture
 (`cypress/fixtures/schemas/<name>.schema.json`) + a per-endpoint schema spec
-(`cypress/e2e/API/schema-validation/<whiz|phizz>/NN-<name>-schema.cy.js`), reusing existing fixtures and
+(`cypress/e2e/API/schema-validation/<primary|secondary>/NN-<name>-schema.cy.js`), reusing existing fixtures and
 skipping non-JSON (PDF/CSV/307) responses. Each schema spec must pass before moving on.
 
 After completion: `echo -e "\033[32m✔ Schema validation tests generated\033[0m"`
@@ -139,7 +139,7 @@ This step owns the single approval gate. `run-tests.md` has its own gate too, so
 > - Type `headed` to force a browser window (uncommon for API tests)
 > - Type `skip` to finish without running
 
-**Wait for the user's response.** Do NOT run tests until approved. Then invoke `run-tests.md` with the final `$ARGUMENTS` string **plus the `auto` token** (e.g. `"TCA-1234 api headless staging auto"`) so `run-tests` skips its own redundant approval gate.
+**Wait for the user's response.** Do NOT run tests until approved. Then invoke `run-tests.md` with the final `$ARGUMENTS` string **plus the `auto` token** (e.g. `"PROJ-1234 api headless staging auto"`) so `run-tests` skips its own redundant approval gate.
 
 After test execution: `echo -e "\033[32m✔ API tests executed\033[0m"`
 After Jira update: `echo -e "\033[32m✔ API test results posted to Jira\033[0m"`

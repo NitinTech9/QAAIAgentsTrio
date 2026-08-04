@@ -22,7 +22,7 @@ Before diagnosing from scratch, read `cypress/knowledge/failure-patterns.json` (
 match the error string against a known `FP-###`. If it matches, apply that pattern's documented
 `fix` directly — this is the fastest, already-proven path (see `cypress/knowledge/_README.md` →
 "Protocol for agents & skills"). Also check `cypress/knowledge/api-behavior-notes.json`: if the
-failing endpoint is a **documented 5xx app-bug** (`known_500_bugs_phizz`), the test is failing
+failing endpoint is a **documented 5xx app-bug** (`known_500_bugs`), the test is failing
 because the app is broken — do NOT "fix" it by accepting the 5xx; report it as a deferred app-bug.
 
 If no entry matches, diagnose normally — and record the new pattern in the write-back step.
@@ -34,7 +34,7 @@ Classify the error from the message:
 | Error pattern | Likely cause |
 |---|---|
 | `cy.task('queryDb') failed — column "X" does not exist` | Wrong DB column name — check schema |
-| `cy.task('queryDb') failed — relation "X" does not exist` | Wrong table name — common: `cancellation_reasons` should be `cancel_reasons` |
+| `cy.task('queryDb') failed — relation "X" does not exist` | Wrong table name — check the real schema (e.g. `cancel_reasons` vs `cancellation_reasons`) |
 | `expected 400 to equal 200` | API request is missing required fields or using wrong field names |
 | `expected 200 to equal 400` | API is returning success when it should fail — assertion direction wrong |
 | `before all hook failed — skipping remaining tests` | Error in `before()` block — fix that first, all other failures cascade from it |
@@ -53,19 +53,19 @@ Read the test file being referenced. Look at:
 ### Step 3 — Check the swagger for correct field names
 
 Key schemas to reference:
-- **Whiz endpoints:** `cypress/fixtures/swagger.json`
-- **Phizz endpoints:** `cypress/fixtures/phizz-swagger.json`
+- **Primary app endpoints:** `cypress/fixtures/swagger.json`
+- **Secondary app endpoints (if any):** `cypress/fixtures/secondary-swagger.json`
 
 Determine which swagger to use based on the test file location:
-- `cypress/e2e/API/phizz-module/**` → use phizz-swagger.json
+- Specs under the secondary app's module folder (e.g. `cypress/e2e/API/<secondary-app>-module/**`) → use secondary-swagger.json
 - All other API tests → use swagger.json
 
-**Common Whiz schemas:**
+**Project schema gotchas:**
 
-- `CancelContractOptions` required fields: `cancel_date`, `cancel_reason_id`, `mileage`, `store_id`
-- Estimate quote GET params: `cancel_reason_id`, `mileage`, `cancel_date`
-- DB table: `cancel_reasons` (NOT `cancellation_reasons`)
-- DB table: `contracts` columns: `id`, `status`, `store_id` (NO `odometer` column — use hardcoded `50000`)
+Maintain a short list here of your product's frequently-hit schema facts, e.g.:
+- Required fields on the request bodies tests most often get wrong
+- DB table names that differ from what the API naming suggests
+- Columns that don't exist and the safe hardcoded value to use instead
 
 ### Step 4 — Apply the minimal fix
 
@@ -89,19 +89,19 @@ cy.task("queryDb", `select id from cancel_reasons limit 1`)
 
 **Wrong DB column:**
 ```javascript
-// Wrong — odometer column doesn't exist
-cy.task("queryDb", `select id, odometer from contracts ...`)
-// Correct — use hardcoded mileage
-cy.task("queryDb", `select id, store_id from contracts ...`)
-mileage = 50000;
+// Wrong — column doesn't exist on this table
+cy.task("queryDb", `select id, quantity from orders ...`)
+// Correct — select real columns; hardcode the missing value if the API needs it
+cy.task("queryDb", `select id, store_id from orders ...`)
+quantity = 1;
 ```
 
-**Wrong swagger field names for cancellation:**
+**Wrong swagger field names:**
 ```javascript
 // Wrong
-body: { contract_id, cancellation_reason_id, cancellation_date }
-// Correct per CancelContractOptions schema
-body: { contract_id, cancel_reason_id, cancel_date, mileage, store_id }
+body: { order_id, cancellation_reason_id, cancellation_date }
+// Correct per the swagger request schema
+body: { order_id, cancel_reason_id, cancel_date, store_id }
 ```
 
 **Missing csrfToken on mutating request:**

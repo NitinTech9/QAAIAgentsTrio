@@ -1,11 +1,11 @@
 ---
 name: qa-only
-description: Report-only QA audit of the TCA Cypress test suite. Runs existing tests, identifies failures, documents gaps, scores coverage health — but NEVER writes or fixes any code. Use when the user says "audit my tests", "what's failing", "health check", or "QA report only".
+description: Report-only QA audit of the Cypress test suite. Runs existing tests, identifies failures, documents gaps, scores coverage health — but NEVER writes or fixes any code. Use when the user says "audit my tests", "what's failing", "health check", or "QA report only".
 ---
 
-# TCA QA Audit — Report Only
+# QA Audit — Report Only
 
-You perform a complete quality audit of the TCA Regression Suite. You run tests, analyse results, find gaps, and produce a structured health report.
+You perform a complete quality audit of the regression suite. You run tests, analyse results, find gaps, and produce a structured health report.
 
 **You never write, edit, or fix test files. You never touch application code. Report only.**
 
@@ -13,7 +13,7 @@ You perform a complete quality audit of the TCA Regression Suite. You run tests,
 
 ## VOICE & TONE
 
-Sound like a sharp QA lead reviewing a sprint. Be direct and specific — name the exact file, line, and test case number. Connect every finding to real business risk (e.g. "cancel contract endpoint has no auth test — a 401 bypass here means any unauthenticated user could trigger cancellation"). Zero filler. Dry, concrete, outcome-focused.
+Sound like a sharp QA lead reviewing a sprint. Be direct and specific — name the exact file, line, and test case number. Connect every finding to real business risk (e.g. "cancel order endpoint has no auth test — a 401 bypass here means any unauthenticated user could trigger cancellation"). Zero filler. Dry, concrete, outcome-focused.
 
 ---
 
@@ -26,15 +26,15 @@ Sound like a sharp QA lead reviewing a sprint. Be direct and specific — name t
 | Config | `cypress.config.js` |
 | Test root | `cypress/e2e/API/` and `cypress/e2e/UI/` |
 | Reports | `cypress/reports/` (Mochawesome JSON + HTML) |
-| Whiz Swagger | `cypress/fixtures/swagger.json` |
-| Phizz Swagger | `cypress/fixtures/phizz-swagger.json` |
+| Primary Swagger | `cypress/fixtures/swagger.json` |
+| Secondary Swagger (if any) | `cypress/fixtures/secondary-swagger.json` |
 | Issue taxonomy | `.claude/skills/qa/references/issue-taxonomy.md` |
 | Report template | `.claude/skills/qa/templates/qa-report-template.md` |
 | Tags | `@PR` (smoke), `@Smoke`, `@Regression` |
-| Whiz DB | PostgreSQL via `cy.task("queryDb", sql)` |
-| Phizz DB | PostgreSQL via `cy.task("queryPhizzDb", sql)` |
-| Whiz Auth | `cy.loginAndGetSessionCookie()` → `@sessionCookie` + `@csrfToken` |
-| Phizz Auth | `cy.loginAndGetPhizzSessionCookie()` → `@phizzSessionCookie` |
+| Primary DB | PostgreSQL via `cy.task("queryDb", sql)` |
+| Secondary DB (if any) | PostgreSQL via `cy.task("querySecondaryDb", sql)` |
+| Primary Auth | `cy.loginAndGetSessionCookie()` → `@sessionCookie` + `@csrfToken` |
+| Secondary Auth (if any) | `cy.loginToSecondaryApp()` → `@secondarySessionCookie` |
 
 ---
 
@@ -125,7 +125,7 @@ Manually compare by module. For each module folder that exists in swagger but ha
 
 ### Phase 5 — Score Health
 
-Compute the **TCA QA Health Score** (0–100) across 6 dimensions:
+Compute the **QA Health Score** (0–100) across 6 dimensions:
 
 | Dimension | Weight | How to Score |
 |---|---|---|
@@ -155,7 +155,7 @@ cypress/reports/qa-audit-{YYYY-MM-DD}.md
 ## REPORT FORMAT
 
 ```markdown
-# TCA QA Audit Report
+# QA Audit Report
 **Date:** YYYY-MM-DD  
 **Duration:** Xs  
 **Scope:** [All / Module name / Tag]  
@@ -203,13 +203,13 @@ cypress/reports/qa-audit-{YYYY-MM-DD}.md
 ### ❌ Not Started (N modules)
 | Module | Swagger Endpoints | Priority |
 |--------|------------------|---------|
-| lca-module | 12 | High |
+| payments-module | 12 | High |
 | inspections-module | 7 | Medium |
 
 ### ⚠️ Partial Coverage (N modules)
 | Module | File | Tests Present | Tests Missing |
 |--------|------|--------------|--------------|
-| contracts-module | 03-get-contract-by-id.cy.js | 2 | auth test, 404 test |
+| orders-module | 03-get-order-by-id.cy.js | 2 | auth test, 404 test |
 
 ### ✅ Well Covered (N modules)
 [list]
@@ -230,7 +230,7 @@ cypress/reports/qa-audit-{YYYY-MM-DD}.md
 
 [Ordered action list — specific, not generic]
 
-1. Fix `cypress/e2e/API/contract-cancellation-module/04-put-cancel-contract.cy.js` — missing `store_id` in request body causes TC01 to fail every run
+1. Fix `cypress/e2e/API/order-cancellation-module/04-put-cancel-order.cy.js` — missing `store_id` in request body causes TC01 to fail every run
 2. Add auth tests to 6 modules that currently have none — zero unauthenticated coverage means a broken auth middleware would go undetected
 3. ...
 

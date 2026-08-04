@@ -5,7 +5,7 @@ description: Generate a complete Cypress API test file from a GitHub PR number, 
 
 # Generate Cypress API Test File
 
-You generate production-ready Cypress API test files for the TCA Regression Suite QA framework.
+You generate production-ready Cypress API test files for this QA framework.
 
 The user provides ONE of:
 - A **GitHub PR number / URL** → fetch API changes from the diff
@@ -20,58 +20,39 @@ The user provides ONE of:
 
 **Auth — two types:**
 1. **Session auth** (all `/api/*` endpoints) — `cy.loginAndGetSessionCookie()` → aliases `@sessionCookie` + `@csrfToken`
-2. **Bearer token** (Darwin `/xtk/pen/*` only) — `cy.generateToken('darwin_2022-03-15')`
+2. **Bearer token** (integration/partner endpoints, if your app has any) — a custom token command, e.g. `cy.generateToken(...)`
 
 **CSRF required on:** POST, PUT, DELETE, PATCH → add `"x-csrf-token": csrfToken` header
 
 **DB access:** `cy.task("queryDb", sqlString)` → returns array of row objects
 
 **Available DB tasks:**
+List the purpose-built tasks registered in `cypress.config.js` (implemented under `cypress/tasks/`), e.g.:
 - `queryDb(sql)` — general SELECT
-- `updateContract({ code, daysToSubtract })` — shift contract dates
-- `getContractStatus({ code })` — fetch contract status
-- `deleteAccountingRule(id)` — cleanup after rule creation tests
-- `deleteAccountingFeeRule(id)` — cleanup after fee rule creation tests
-- `deleteProductAndRelations(id)` — cleanup after product creation tests
-- `selectCancellationById(id)` — fetch cancellation record
+- `querySecondaryDb(sql)` — general SELECT against the second backend's DB (if any)
+- domain-specific setup/cleanup tasks (e.g. `deleteOrderAndRelations(id)`) — reuse before inventing new ones
 
 **Available fixtures:**
-- `newSaleBody.json` — sale request body
-- `newContractBody.json` — contract request body
-- `createRuleBody.json` — accounting rule body
-- `createFeeRuleBody.json` — accounting fee rule body
-- `createProductBody.json` — product body
-- `manualCancellationUpdateBody.json` — cancellation update body
-- `schemas/productResponseSchema.json` — schema for chai-json-schema validation
-- `schemas/ruleResponseSchema.json` — schema for chai-json-schema validation
-- `securityKeys.json` — integration API keys
+Check `cypress/fixtures/` for existing request bodies and reuse them, e.g.:
+- `create<Resource>Body.json` — request bodies per resource
+- `schemas/<resource>ResponseSchema.json` — schemas for chai-json-schema validation
 
-**dataFactory.js exports:** `createCustomer()`, `createCoBuyer()` — faker-generated data
+**dataFactory.js exports:** faker-generated data builders (e.g. `createCustomer()`) — check `cypress/support/dataFactory.js`
 
 ---
 
 ## FOLDER MAPPING (kebab-case — mandatory)
 
+Map each endpoint to its module folder. Keep this table in sync with your suite's real layout (`cypress/knowledge/api-catalog.json` is the source of truth), e.g.:
+
 | URL pattern | Folder |
 |---|---|
-| `/api/contracts/cancellation/*`, `/api/contracts/cancel` | `cypress/e2e/API/contract-cancellation-module/` |
-| `/api/contracts*` (non-cancellation) | `cypress/e2e/API/contracts-module/` |
-| `/api/new-sale*`, `/api/sales*`, `/api/e-sales*` | `cypress/e2e/API/sales-module/` |
-| `/api/vin*`, `/api/vehicle-*` | `cypress/e2e/API/vin-module/` |
+| `/api/orders*` | `cypress/e2e/API/orders-module/` |
 | `/api/health*` | `cypress/e2e/API/health-module/` |
 | `/session`, `/confirm`, `/new-password-reset`, `/password-reset` | `cypress/e2e/API/auth-module/` or `cypress/e2e/API/login-module/` |
-| `/api/admin/sales*`, `/api/dashboard*`, `/api/dms*`, `/api/store-uploads*` | `cypress/e2e/API/admin-module/tools-mgmt/` |
-| `/api/users*`, `/api/roles*`, `/api/stores*`, `/api/companies*`, `/api/lenders*`, `/api/job-title*` | `cypress/e2e/API/admin-module/user-mgmt/` |
-| `/api/products*`, `/api/product-types*`, `/api/rate-buckets*`, `/api/fees*`, `/api/caps*`, `/api/coupons*`, `/api/adjustments*`, `/api/pricing-formulas*` | `cypress/e2e/API/admin-module/product-mgmt/` |
-| `/api/accounting*`, `/api/invoices*`, `/api/intacct*` | `cypress/e2e/API/admin-module/accounting-mgmt/` |
-| `/api/admin/contracts*` | `cypress/e2e/API/admin-module/contracts-mgmt/` |
-| `/api/vin-overrides*`, `/api/vehicle-*` (admin) | `cypress/e2e/API/admin-module/vehicle-mgmt/` |
-| `/api/admin/cancellations-dashboard*` | `cypress/e2e/API/admin-module/cancellation-dashboard/` |
-| `/api/inspections*` | `cypress/e2e/API/inspections-module/` |
-| `/api/lca/*` | `cypress/e2e/API/lca-module/` (sub-folders: `invoices/`, `checks/`, `claims/`, `denied-claims/`, `sales/`) |
-| `/xtk/pen/*` | `cypress/e2e/API/darwin-module/` |
-| Phizz `/api/automotive_claims*` | `cypress/e2e/API/phizz-module/claims/` |
-| Phizz `/api/*` (other phizz endpoints) | `cypress/e2e/API/phizz-module/<feature>/` |
+| `/api/users*`, `/api/roles*`, `/api/stores*` | `cypress/e2e/API/admin-module/user-mgmt/` |
+| `/api/products*`, `/api/fees*`, `/api/coupons*` | `cypress/e2e/API/admin-module/product-mgmt/` |
+| Secondary app `/api/*` (if any) | `cypress/e2e/API/<secondary-app>-module/<feature>/` |
 
 ---
 
@@ -79,7 +60,7 @@ The user provides ONE of:
 
 Before any of the workflows below, read `cypress/knowledge/` for the endpoint(s) in scope and let it
 shape the spec (full protocol in `cypress/knowledge/_README.md`):
-- `api-behavior-notes.json` — `known_500_bugs_phizz`, `endpoint_quirks`, `auth_behavior`. If the
+- `api-behavior-notes.json` — `known_500_bugs`, `endpoint_quirks`, `auth_behavior`. If the
   endpoint is a **documented 5xx bug**, don't assert 200 and never accept the 5xx; apply known auth
   quirks (many GETs return 200 without auth → don't assert 403) and param requirements.
 - `api-dependency-map.json` (`modules`) — reuse documented tables, data-source query, auth role, and
@@ -112,8 +93,8 @@ Parse from curl:
 - URL path (strip base URL, keep path + query params)
 - Body (`-d` or `--data`)
 - Auth detection:
-  - Has `_phizzsession` cookie or port 3000 → **Phizz** session auth — use `cy.loginAndGetPhizzSessionCookie()` → `@phizzSessionCookie`
-  - Has `_whizsession` cookie or port 4000 → **Whiz** session auth — use `cy.loginAndGetSessionCookie()` → `@sessionCookie` + `@csrfToken`
+  - Session cookie / port matching the **secondary app** (if your suite has one) → secondary session auth — use `cy.loginToSecondaryApp()` → `@secondarySessionCookie`
+  - Session cookie / port matching the **primary app** → primary session auth — use `cy.loginAndGetSessionCookie()` → `@sessionCookie` + `@csrfToken`
   - Has `Authorization: Bearer` → bearer token auth
 
 ---
@@ -131,9 +112,9 @@ User says e.g.: "write tests for GET /api/stores/{id}"
 Zero-padded sequence, HTTP method prefix, kebab-case resource name.
 
 **Examples:**
-- `01-get-contracts-list.cy.js`
-- `03-post-create-contract.cy.js`
-- `04-put-cancel-contract.cy.js`
+- `01-get-orders-list.cy.js`
+- `03-post-create-order.cy.js`
+- `04-put-cancel-order.cy.js`
 
 If adding to an existing file, continue numbering from the last test case.
 
@@ -168,9 +149,9 @@ describe("Test Scenario: [Feature Name] API Tests", () => {
         });
     });
 
-    // Optional: cleanup after mutating tests
+    // Optional: cleanup after mutating tests (use your project's cleanup task)
     after(() => {
-        cy.task("deleteAccountingRule", resourceId);
+        cy.task("deleteOrderAndRelations", resourceId);
     });
 
     it("Test Case 01: Validate [endpoint] returns 200", { tags: ["@PR", "@Smoke"] }, () => {
@@ -250,7 +231,7 @@ describe("Test Scenario: [Feature Name] API Tests", () => {
 - ALWAYS `let` for variables set inside Cypress chain (not `const`)
 - ALWAYS `failOnStatusCode: false` on the happy-path call too, then assert manually (so you can log the body on failure)
 - Tags: `{ tags: ["@PR", "@Smoke"] }` on happy path, `{ tags: ["@Regression"] }` on negative/edge
-- DB table names: `cancel_reasons` (NOT `cancellation_reasons`), `contracts` (columns: `id`, `status`, `store_id`)
+- DB table names: verify against the real schema before writing queries (keep your project's known gotchas listed here)
 - Pure JavaScript — no TypeScript
 
 ---

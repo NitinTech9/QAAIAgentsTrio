@@ -1,16 +1,16 @@
 ---
-description: Stage, commit (gated by the pre-commit hook), push, and create a pull request for the TCARegressionSuite-QA repository
+description: Stage, commit (gated by the pre-commit hook), push, and create a pull request for the QA automation repository
 allowed-tools: [Bash, Read, Glob]
 argument-hint: '[optional: parent-branch or focus-area]'
 ---
 
-# Pull Request Generator (TCARegressionSuite-QA)
+# Pull Request Generator
 
 You take the current branch's changes from working tree to open PR in one command: generate the
 title/description, then (after confirmation) **stage, commit, push, and create the PR**. The commit
 is gated by the repo's pre-commit hook, so the no-5xx / syntax / JSON checks run as part of `/pr`.
 
-You generate pull request titles and descriptions for the **TCARegressionSuite-QA** repository — the Cypress-based QA automation framework for TCA (Tech9/Asbury). It covers API and UI tests for two backends: **Whiz** (F&I contract platform, port 4000) and **Phizz** (automotive claims platform, port 3000). The repo also contains AI automation tooling (agents, commands, skills) that generate test cases from Jira tickets.
+You generate pull request titles and descriptions for the QA automation repository — a Cypress-based QA framework covering API and UI tests (optionally against more than one backend). The repo also contains AI automation tooling (agents, commands, skills) that generate test cases from Jira tickets.
 
 The conventions below come from merged PRs and project structure. Follow them — do not invent extra structure.
 
@@ -27,7 +27,7 @@ The conventions below come from merged PRs and project structure. Follow them �
 ### Parent Branch Detection Commands
 
 ```bash
-# TCARegressionSuite-QA integrates into main
+# This repo integrates into main
 git merge-base HEAD main >/dev/null 2>&1 && echo "main" ||
 git merge-base HEAD master >/dev/null 2>&1 && echo "master"
 
@@ -46,7 +46,7 @@ When scanning the diff, flag any of these areas — they affect what goes into t
 - `cypress/e2e/pages/` — Page Object files (affect multiple UI tests)
 - `cypress/support/commands.js` — custom Cypress commands (shared across all tests)
 - `cypress/support/dataFactory.js` — test data generators
-- `cypress/tasks/` — DB task files (`queryDb`, `queryPhizzDb`, etc.)
+- `cypress/tasks/` — DB task files (`queryDb`, `querySecondaryDb`, etc.)
 - `cypress/fixtures/` — test data, request bodies, swagger specs
 - `cypress/fixtures/schemas/` — JSON Schema validation files
 - `cypress.config.js` — Cypress configuration (timeouts, env vars, plugins)
@@ -63,19 +63,19 @@ When scanning the diff, flag any of these areas — they affect what goes into t
    Use a clear, descriptive title. If the branch has a Jira ticket, lead with it in brackets. Keep under 70 characters.
 
    ```
-   [TS-XXXXX] <concise description>
+   [PROJ-XXXXX] <concise description>
    ```
 
    - Use imperative mood ("Add", "Fix", "Update", "Remove" — not "Added", "Fixed")
    - If no Jira ticket is associated, describe the change directly (e.g. "Add schema validation for contracts API")
    - For multi-module work, name the primary module or say "multiple modules"
 
-   Examples (adapted from project history):
-   - `[TS-16917] Add automotive claim complaint labor API tests`
-   - `[TS-17350] Add cancel fee page exclude radio button tests`
-   - `[TS-17309] Add VeroGAP cancellation transmittal automation`
+   Examples:
+   - `[PROJ-16917] Add order refund API tests`
+   - `[PROJ-17350] Add checkout page discount radio button tests`
+   - `[PROJ-17309] Add subscription cancellation export automation`
    - `Add schema validation for all API modules`
-   - `Fix failing contract cancellation test selectors`
+   - `Fix failing checkout flow test selectors`
    - `Update AI automation agents and pipeline commands`
 
 3. **Generate the PR body.** Use only the sections below. Omit any that don't apply — do not pad.
@@ -91,7 +91,7 @@ When scanning the diff, flag any of these areas — they affect what goes into t
 
 ## Modules Affected          (include when test specs changed)
 
-List the cypress test modules touched (e.g. `contracts-module`, `phizz-module/claims`, `admin-module/contracts-mgmt`).
+List the cypress test modules touched (e.g. `orders-module`, `users-module`, `admin-module/settings`).
 
 ## What's NOT changing       (optional — include only if scope is easy to misread)
 
@@ -100,21 +100,21 @@ Short clarification of related tests intentionally left alone, to head off revie
 ## Test plan
 
 - [ ] `npx cypress run --spec "<changed-spec-file>"` passes locally.
-- [ ] For API tests: backend (Whiz/Phizz) is running and test data exists.
+- [ ] For API tests: the backend under test is running and test data exists.
 - [ ] For UI tests: app is running and tests pass in headed mode.
 - [ ] For schema changes: `cy.fixture("schemas/<file>.json")` loads and validates correctly.
-- [ ] For Phizz tests: `PHIZZ_BASE_URL` env var is set and Phizz DB is accessible.
+- [ ] For second-backend tests (if your suite has one): its base URL env var is set and its DB is accessible.
 - [ ] For custom command changes: all existing tests still pass (commands are shared).
 - [ ] For Page Object changes: UI tests using the Page Object still pass.
 - [ ] For agent/command changes: run the affected agent against a test ticket to verify.
 - [ ] No hardcoded credentials or sensitive data in committed files.
 
-Refs: TS-XXXXX
+Refs: PROJ-XXXXX
 ```
 
 **Trailer rules:**
 
-- End the body with a `Refs: TS-XXXXX` line if a Jira ticket is associated.
+- End the body with a `Refs: PROJ-XXXXX` line if a Jira ticket is associated.
 - For multi-ticket PRs, add one `Refs:` line per ticket.
 - The trailer block must be **contiguous** — no blank lines between trailer lines.
 - Do not add `Co-Authored-By` or any "Generated with" footer to PR bodies. (Commits already carry their own trailers.)
@@ -129,8 +129,8 @@ TICKET=$(echo "$BRANCH" | grep -oE '[A-Za-z]{2,3}-[0-9]{4,6}' | head -n1)
 ```
 
 Examples:
-- `TS-17309_verogap` → `TS-17309`
-- `TS-17350_cancel_fee_page_exclude_radio_button_not_working` → `TS-17350`
+- `PROJ-17309_subscription_cancel` → `PROJ-17309`
+- `PROJ-17350_checkout_discount_radio_button_not_working` → `PROJ-17350`
 - `manualexpire` → no ticket (ask user or omit)
 - `fixedfailedtc` → no ticket (ask user or omit)
 - `phase12` → no ticket (ask user or omit)
@@ -178,7 +178,7 @@ If it is `main` or `master`, **stop** and tell the user — never commit directl
 git add -A
 git commit -m "<commit message>"
 ```
-- **Commit message:** reuse the PR title (without the trailing period), e.g. `[TS-17309] Add VeroGAP cancellation transmittal automation`. For a single logical change one commit is correct; if the diff spans clearly separate concerns, tell the user you recommend splitting and let them decide.
+- **Commit message:** reuse the PR title (without the trailing period), e.g. `[PROJ-17309] Add subscription cancellation export automation`. For a single logical change one commit is correct; if the diff spans clearly separate concerns, tell the user you recommend splitting and let them decide.
 - **The pre-commit hook runs automatically here** (if installed via `npm run hooks:install`). It checks staged `*.cy.js` for syntax (CJS or ESM) + the no-5xx rule + no NEW ambiguous 2xx/4xx `oneOf` on added lines (escape hatch: `// status-ambiguous: <reason>`), and validates touched JSON. **If the hook fails, the commit is rejected — stop, show the hook output, and do NOT push.** Fix the reported issues and re-run `/pr`. Do not use `--no-verify` to bypass it.
 - **Do NOT add a `Co-Authored-By` or "Generated with" trailer to the commit message.**
 
@@ -192,7 +192,7 @@ BRANCH=$(git rev-parse --abbrev-ref HEAD)
 # Stage + commit (only if there are uncommitted changes). The pre-commit hook gates this.
 if [ -n "$(git status --porcelain)" ]; then
   git add -A
-  git commit -m "[TS-XXXXX] Example title"   # reuse the PR title; hook runs here
+  git commit -m "[PROJ-XXXXX] Example title"   # reuse the PR title; hook runs here
 fi
 
 # Check if branch exists on remote
@@ -201,8 +201,8 @@ git ls-remote --heads origin "$(git rev-parse --abbrev-ref HEAD)"
 # Push branch with upstream tracking if needed
 git push -u origin "$(git rev-parse --abbrev-ref HEAD)"
 
-# Create PR — default base is main for TCARegressionSuite-QA
-gh pr create --base main --title "[TS-XXXXX] Example title" --body "$(cat <<'EOF'
+# Create PR — default base is main
+gh pr create --base main --title "[PROJ-XXXXX] Example title" --body "$(cat <<'EOF'
 ## Summary
 
 - ...
@@ -215,7 +215,7 @@ gh pr create --base main --title "[TS-XXXXX] Example title" --body "$(cat <<'EOF
 
 - [ ] ...
 
-Refs: TS-XXXXX
+Refs: PROJ-XXXXX
 EOF
 )"
 
@@ -238,33 +238,33 @@ gh pr view --web
 **Proposed:**
 
 ```
-Title: [TS-16917] Add automotive claim complaint labor API tests
+Title: [PROJ-16917] Add order refund API tests
 Base:  main
-Head:  TS-16917_complaint_labor
+Head:  PROJ-16917_order_refunds
 
 Body:
 ## Summary
 
-- Add API test spec for POST/GET/DELETE complaint labor endpoints on the Phizz platform (`cypress/e2e/API/phizz-module/claims/02-post-complaint-labor.cy.js`). Covers full CRUD lifecycle, multi-labor creation with selective deletion, negative/edge cases, and unauthenticated access.
-- Add JSON Schema validation file for complaint labor response (`cypress/fixtures/schemas/complaint-labor.schema.json`).
-- Generate manual test cases and ticket context via AI automation agents for TS-16917.
+- Add API test spec for POST/GET/DELETE order refund endpoints (`cypress/e2e/API/orders-module/02-post-order-refund.cy.js`). Covers full CRUD lifecycle, multi-item refunds with selective deletion, negative/edge cases, and unauthenticated access.
+- Add JSON Schema validation file for the order refund response (`cypress/fixtures/schemas/order-refund.schema.json`).
+- Generate manual test cases and ticket context via AI automation agents for PROJ-16917.
 
 ## Modules Affected
 
-- `phizz-module/claims`
+- `orders-module`
 
 ## Test plan
 
-- [ ] `npx cypress run --spec "cypress/e2e/API/phizz-module/claims/02-post-complaint-labor.cy.js"` passes with Phizz running on port 3000.
-- [ ] `PHIZZ_BASE_URL` is set and Phizz DB is accessible for `cy.task("queryPhizzDb", ...)`.
-- [ ] Existing `01-get-automotive-claims.cy.js` tests still pass (no regressions).
-- [ ] Schema file loads via `cy.fixture("schemas/complaint-labor.schema.json")`.
+- [ ] `npx cypress run --spec "cypress/e2e/API/orders-module/02-post-order-refund.cy.js"` passes with the backend running.
+- [ ] DB is accessible for `cy.task("queryDb", ...)`.
+- [ ] Existing `01-get-orders.cy.js` tests still pass (no regressions).
+- [ ] Schema file loads via `cy.fixture("schemas/order-refund.schema.json")`.
 - [ ] No hardcoded credentials in the spec file.
 
-Refs: TS-16917
+Refs: PROJ-16917
 
 Will stage 2 file(s) and commit as:
-  [TS-16917] Add automotive claim complaint labor API tests
+  [PROJ-16917] Add order refund API tests
 
 Stage, commit, push, and create this PR? (y/n)
 ```
@@ -273,7 +273,7 @@ Stage, commit, push, and create this PR? (y/n)
 
 ```
 ✔ Pre-commit checks passed (1 spec, 1 json file)
-Committed b3f9a1c  [TS-16917] Add automotive claim complaint labor API tests
-Pushed origin/TS-16917_complaint_labor
-PR created: https://github.com/NitinTech9/TCARegressionSuite-QA/pull/<n>
+Committed b3f9a1c  [PROJ-16917] Add order refund API tests
+Pushed origin/PROJ-16917_order_refunds
+PR created: https://github.com/<your-org>/<your-qa-repo>/pull/<n>
 ```

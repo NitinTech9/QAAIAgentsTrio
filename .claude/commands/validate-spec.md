@@ -5,7 +5,7 @@ You are given: **$ARGUMENTS** — `<TICKET-ID> [api|ui]`
 Parse `$ARGUMENTS`:
 - `TICKET_ID` = first token (must match `[A-Z]+-[0-9]+`)
 - `SPEC_TYPE` = second token — must be `api` or `ui`. If missing or invalid, **stop** and ask the user:
-  > "Usage: `/validate-spec <TICKET-ID> <api|ui>` — e.g. `/validate-spec TCA-1234 api`"
+  > "Usage: `/validate-spec <TICKET-ID> <api|ui>` — e.g. `/validate-spec PROJ-1234 api`"
 
 Derive:
 - `STATE_KEY` = `"validate-" + SPEC_TYPE + "-spec"` (e.g. `validate-api-spec` or `validate-ui-spec`)
@@ -118,18 +118,18 @@ process.exit(bad.length?1:0);
 ```
 - Assert the precise code — probe the endpoint (curl / prior run output) if unsure.
 - Escape hatch for genuinely state-dependent flows: a `// status-ambiguous: <reason>` comment on the same line (the pre-commit hook honors the same marker, on added lines only).
-- Watch for the fake-unauthenticated trap: the login command sets the session cookie in the browser jar, so an "unauthenticated" cy.api() without an explicit Cookie header STILL sends it. Truly unauthenticated tests must call `cy.clearCookies()` first — whiz then returns **403** for `/api/*`.
+- Watch for the fake-unauthenticated trap: the login command sets the session cookie in the browser jar, so an "unauthenticated" cy.api() without an explicit Cookie header STILL sends it. Truly unauthenticated tests must call `cy.clearCookies()` first — the API then rejects with **401/403** for `/api/*`.
 
 ### Check 10: Schema Validation Exists for 200-JSON Endpoints (API only)
 Per `feedback_schema_validation.md`, every automated endpoint that returns a 200 JSON body must have a matching schema-validation spec (same change). For each distinct endpoint this spec asserts a 200 on:
 - Derive its path (strip base URL + query; treat `${...}`/numeric segments as params).
-- Search `cypress/e2e/API/schema-validation/{whiz,phizz}/` for a spec exercising the same route (params as wildcards).
+- Search `cypress/e2e/API/schema-validation/{primary,secondary}/` for a spec exercising the same route (params as wildcards).
 - **Report:** list any 200-JSON endpoint with no schema counterpart. **Auto-remediate** by reading and executing `.claude/commands/create-schema-validation.md` with `$ARGUMENTS = TICKET_ID` to generate the missing schema fixture + per-endpoint spec; if it can't be generated (non-JSON 307/PDF/CSV, or no data), note the reason instead. Skip endpoints whose response is non-JSON.
 
 ### Check 11: DB Assertion on Every Mutation (API only) — HARD GATE
 Per `CONTRIBUTING/testing-standards/feedback_db_assertions.md`, a `POST`/`PUT`/`PATCH`/`DELETE`
 `cy.api()` that **successfully mutates state** must be backed by a DB assertion (`cy.task("queryDb", …)` /
-`cy.task("queryPhizzDb", …)`) proving the change persisted (or the row is gone, for DELETE). A spec that
+`cy.task("querySecondaryDb", …)`) proving the change persisted (or the row is gone, for DELETE). A spec that
 mutates but only asserts the HTTP status can pass while the write silently failed. Scan the spec — flag
 only when a mutation is paired with a **2xx success assertion** and no DB query, so negative-only specs
 (that assert 4xx) and non-persisting endpoints are not false-flagged:
@@ -138,8 +138,8 @@ node -e '
 const fs=require("fs"),src=fs.readFileSync(process.argv[1],"utf8");
 const mutates=/method:\s*["'"'"'](POST|PUT|PATCH|DELETE)["'"'"']/i.test(src);
 const assertsSuccess=/to\.equal\(\s*20[0-9]\b/.test(src) || /oneOf\(\s*\[[^\]]*\b20[0-9]\b/.test(src);
-const hasDb=/cy\.task\(\s*["'"'"'](queryDb|queryPhizzDb)/.test(src);
-if(mutates && assertsSuccess && !hasDb){ console.log("mutation asserts a 2xx success but has NO cy.task queryDb/queryPhizzDb assertion"); process.exit(1); }
+const hasDb=/cy\.task\(\s*["'"'"'](queryDb|querySecondaryDb)/.test(src);
+if(mutates && assertsSuccess && !hasDb){ console.log("mutation asserts a 2xx success but has NO cy.task queryDb/querySecondaryDb assertion"); process.exit(1); }
 process.exit(0);
 ' "<SPEC_FILE>"
 ```

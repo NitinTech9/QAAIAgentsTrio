@@ -2,30 +2,24 @@
   "permissions": {
     "allow": [
       "mcp__postgres__query",
-      "Bash(git add *)"
+      "Bash(git add *)",
+      "Bash(grep -v ':0$')",
+      "Bash(sort -t: -k2 -rn)"
     ],
     "deny": [
-      "Read(/Users/nitin.tech9/work/go/src/phizz/config.toml)",
-      "Read(/Users/nitin.tech9/work/go/src/whiz/config.toml)",
-      "Edit(/Users/nitin.tech9/work/go/src/phizz/config.toml)",
-      "Edit(/Users/nitin.tech9/work/go/src/whiz/config.toml)",
-      "Read(/Users/nitin.tech9/work/go/src/phizz/**/.env*)",
-      "Read(/Users/nitin.tech9/work/go/src/whiz/**/.env*)",
-      "Edit(/Users/nitin.tech9/work/go/src/phizz/**/.env*)",
-      "Edit(/Users/nitin.tech9/work/go/src/whiz/**/.env*)",
-      "Read(/Users/nitin.tech9/work/go/src/phizz/**/credentials*)",
-      "Read(/Users/nitin.tech9/work/go/src/whiz/**/credentials*)",
-      "Edit(/Users/nitin.tech9/work/go/src/phizz/**/credentials*)",
-      "Edit(/Users/nitin.tech9/work/go/src/whiz/**/credentials*)",
-      "Read(/Users/nitin.tech9/work/go/src/phizz/**/secrets*)",
-      "Read(/Users/nitin.tech9/work/go/src/whiz/**/secrets*)",
-      "Edit(/Users/nitin.tech9/work/go/src/phizz/**/secrets*)",
-      "Edit(/Users/nitin.tech9/work/go/src/whiz/**/secrets*)"
+      "Read(/absolute/path/to/your/backend/config.toml)",
+      "Edit(/absolute/path/to/your/backend/config.toml)",
+      "Read(/absolute/path/to/your/backend/**/.env*)",
+      "Edit(/absolute/path/to/your/backend/**/.env*)",
+      "Read(/absolute/path/to/your/backend/**/credentials*)",
+      "Edit(/absolute/path/to/your/backend/**/credentials*)",
+      "Read(/absolute/path/to/your/backend/**/secrets*)",
+      "Edit(/absolute/path/to/your/backend/**/secrets*)"
     ],
     "defaultMode": "plan",
     "additionalDirectories": [
-      "/Users/nitin.tech9/work/go/src/phizz",
-      "/Users/nitin.tech9/work/go/src/whiz"
+      "/absolute/path/to/your/backend",
+      "/absolute/path/to/your/frontend"
     ]
   },
   "hooks": {

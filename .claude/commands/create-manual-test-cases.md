@@ -76,7 +76,7 @@ Each test case is a single numbered line starting with "Verify that..." — conc
 <Brief summary>
 
 ## Module / Feature
-<Which module — e.g. auto-claims-module, contracts-module, admin-module>
+<Which module — e.g. auto-claims-module, orders-module, admin-module>
 
 ## Preconditions
 - User is logged in with valid credentials

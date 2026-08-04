@@ -1,8 +1,8 @@
 {
   "project": {
-    "name": "TCA",
+    "name": "YourProject",
     "jira": {
-      "cloudId": "technine.atlassian.net",
+      "cloudId": "your-org.atlassian.net",
       "testIssueType": "Test",
       "issueLinkType": "Test",
       "batchSize": 8,
@@ -20,32 +20,29 @@
       "dataFactory": "cypress/support/dataFactory.js",
       "tasks": "cypress/tasks",
       "fixtures": "cypress/fixtures",
-      "swaggerWhiz": "cypress/fixtures/swagger.json",
-      "swaggerPhizz": "cypress/fixtures/phizz-swagger.json",
+      "swaggerPrimary": "cypress/fixtures/swagger.json",
+      "swaggerSecondary": null,
       "namingConventions": null,
       "logs": "cypress/logs",
       "reports": "cypress/reports",
       "screenshots": "cypress/screenshots"
     },
     "auth": {
-      "whiz": {
+      "_comment": "primary = your main app under test. If your suite tests a second backend, replace `secondary: null` with a block of the same shape (loginCommand, sessionCookieAlias, csrfTokenAlias). The flattened keys below are the default when a spec doesn't say which app it targets.",
+      "primary": {
         "loginCommand": "cy.loginAndGetSessionCookie()",
         "sessionCookieAlias": "@sessionCookie",
         "csrfTokenAlias": "@csrfToken"
       },
-      "phizz": {
-        "loginCommand": "cy.loginAndGetPhizzSessionCookie()",
-        "sessionCookieAlias": "@phizzSessionCookie",
-        "csrfTokenAlias": null
-      },
+      "secondary": null,
       "loginCommand": "cy.loginAndGetSessionCookie()",
       "sessionCookieAlias": "@sessionCookie",
       "csrfTokenAlias": "@csrfToken"
     },
     "app": {
-      "_comment": "Used by explore-live-app.md for browser-driven exploration. baseUrls mirror cypress.config.js environments.local; credentials are read from envFile, never hardcoded.",
-      "whizBaseUrl": "http://localhost:4000",
-      "phizzBaseUrl": "http://localhost:3000",
+      "_comment": "Used by explore-live-app.md for browser-driven exploration. baseUrls should mirror the environments in your test-runner config; credentials are read from envFile, never hardcoded. Set secondaryBaseUrl only if you test a second backend.",
+      "primaryBaseUrl": "http://localhost:4000",
+      "secondaryBaseUrl": null,
       "loginPath": "/login",
       "envFile": "cypress.env.json",
       "emailKey": "LOGIN_EMAIL",
@@ -57,10 +54,10 @@
       "storyMaxTests": 8
     },
     "runCommand": {
-      "_comment": "The `fnm use 20 && unset ELECTRON_RUN_AS_NODE` prefix is REQUIRED: Cypress fails to bootstrap under the harness default (Node 18 + ELECTRON_RUN_AS_NODE=1). Do not remove it. See CLAUDE.md 'Running tests'.",
-      "headed": "fnm use 20 && unset ELECTRON_RUN_AS_NODE && npx cypress run --spec \"{specFile}\" --headed --reporter mochawesome",
-      "headless": "fnm use 20 && unset ELECTRON_RUN_AS_NODE && npx cypress run --spec \"{specFile}\" --reporter mochawesome",
-      "withEnv": "fnm use 20 && unset ELECTRON_RUN_AS_NODE && CYPRESS_ENV={env} npx cypress run --spec \"{specFile}\" --reporter mochawesome"
+      "_comment": "{specFile} and {env} are replaced at runtime by run-tests.md. Add any environment prefix your machine needs (e.g. a Node version manager) to all three commands.",
+      "headed": "npx cypress run --spec \"{specFile}\" --headed --reporter mochawesome",
+      "headless": "npx cypress run --spec \"{specFile}\" --reporter mochawesome",
+      "withEnv": "CYPRESS_ENV={env} npx cypress run --spec \"{specFile}\" --reporter mochawesome"
     },
     "runTimeoutMs": 600000,
     "productCode": {
@@ -70,7 +67,7 @@
       "excludeDirs": ["node_modules", ".git", "dist", "build", "coverage", "vendor"]
     },
     "postman": {
-      "_comment": "Whiz auth is cookie-based: POST /session (sets session cookie), then GET /api/session to read the gorilla CSRF token for mutations. Phizz uses server-to-server /auth + a Phizz-Checksum header (see cypress/support/commands.js).",
+      "_comment": "Describe your app's real auth flow here so generated collections model it correctly (cookie vs bearer, where the CSRF token comes from). See cypress/support/commands.js in your repo for the source of truth.",
       "collectionsPath": "postman/collections",
       "authType": "cookie",
       "loginEndpoint": "/session",

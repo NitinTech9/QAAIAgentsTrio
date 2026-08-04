@@ -5,7 +5,7 @@ You are given a Jira ticket ID: **$ARGUMENTS**
 `$ARGUMENTS` may optionally contain a second positional token (used by other commands). Only the first token (the ticket ID) is used here.
 
 **If `$ARGUMENTS` is empty or the first token does not match `[A-Z]+-[0-9]+`, stop immediately and tell the user:**
-> "A Jira ticket ID is required. Usage: `/fetch-ticket <TICKET-ID>` (e.g. `/fetch-ticket TCA-1234`)"
+> "A Jira ticket ID is required. Usage: `/fetch-ticket <TICKET-ID>` (e.g. `/fetch-ticket PROJ-1234`)"
 **Do not proceed with any further steps.**
 
 Let `TICKET_ID` = the first token of `$ARGUMENTS`.
@@ -39,7 +39,7 @@ If `steps["fetch-ticket"]` is `done`, print: `✔ Fetch ticket already completed
 
 ## Resolve Cloud ID
 
-The config `cloudId` may be a site domain (e.g. `technine.atlassian.net`) or a UUID. The Jira MCP tools require the actual cloud ID (UUID format).
+The config `cloudId` may be a site domain (e.g. `your-org.atlassian.net`) or a UUID. The Jira MCP tools require the actual cloud ID (UUID format).
 
 **If `CLOUD_ID` does NOT look like a UUID** (i.e. it contains `.` or letters without hyphens):
 1. Call `mcp__atlassian__getAccessibleAtlassianResources` to list available sites
@@ -124,7 +124,7 @@ Read description + every comment. Save to `{CONTEXT_DIR}/TICKET_ID-discussion.md
 <Summarise what the ticket is actually asking for, based on description + all comments>
 
 ## Key Decisions from Comments
-- e.g. "Comment by John on Jan 5: confirmed the issue only affects non-Asbury stores"
+- e.g. "Comment by John on Jan 5: confirmed the issue only affects monthly plans"
 
 ## Scenarios Mentioned in Comments
 

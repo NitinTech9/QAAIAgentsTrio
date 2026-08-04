@@ -3,8 +3,8 @@
   "project": {
     "productCode": {
       "rootPaths": [
-        "/path/to/your/phizz",
-        "/path/to/your/whiz"
+        "/absolute/path/to/your/backend",
+        "/absolute/path/to/your/frontend"
       ]
     }
   }

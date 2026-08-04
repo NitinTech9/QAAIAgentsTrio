@@ -3,7 +3,7 @@ name: {{SKILL_NAME}}
 description: {{SKILL_DESCRIPTION}}
 ---
 
-# TCA QA — {{SKILL_TITLE}}
+# QA — {{SKILL_TITLE}}
 
 {{SKILL_INTRO}}
 
@@ -22,14 +22,15 @@ description: {{SKILL_DESCRIPTION}}
 | Issue taxonomy | `.claude/skills/qa/references/issue-taxonomy.md` |
 | Report template | `.claude/skills/qa/templates/qa-report-template.md` |
 | Tags | `@PR` (smoke) · `@Smoke` · `@Regression` |
-| DB | PostgreSQL `whiz` via `cy.task("queryDb", sql)` |
+| DB | PostgreSQL via `cy.task("queryDb", sql)` |
 | Auth | `cy.loginAndGetSessionCookie()` → `@sessionCookie` + `@csrfToken` |
 
 **Known DB facts:**
-- Table: `cancel_reasons` (NOT `cancellation_reasons`)
-- Table: `contracts` columns: `id`, `status`, `store_id` (no `odometer`)
-- Contract statuses: `'Active'`, `'Cancelled'`, `'Voided'`
-- Hardcode `mileage = 50000` for cancellation estimate tests
+Maintain a short list here of schema gotchas specific to your product, e.g.:
+- Exact table names that are easy to get wrong
+- Columns that do/don't exist on frequently queried tables
+- Valid status enum values
+- Safe hardcoded values for test inputs
 
 ---
 
@@ -98,7 +99,7 @@ Classify each module folder:
 
 ## PHASE 5 — HEALTH SCORE
 
-Compute TCA QA Health Score (0–100):
+Compute QA Health Score (0–100):
 
 | Dimension | Weight | How to Score |
 |---|---|---|

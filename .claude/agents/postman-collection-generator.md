@@ -21,7 +21,7 @@ Extract:
 ## Ticket ID Gate
 
 **If the user's message does not contain a Jira ticket ID matching `[A-Z]+-[0-9]+`, ask:**
-> "Please provide a Jira ticket ID to generate a Postman collection for (e.g. `TCA-1234`)"
+> "Please provide a Jira ticket ID to generate a Postman collection for (e.g. `PROJ-1234`)"
 
 Wait for their response before proceeding. Record as `TICKET_ID`.
 
@@ -29,10 +29,10 @@ Wait for their response before proceeding. Record as `TICKET_ID`.
 
 Parse the user's message for optional flags after the ticket ID:
 
-- **`force`** (case-insensitive) — e.g. `TCA-1234 force` → set `FORCE_MODE = true` (default: `false`). Resets the `generate-postman-collection` step to `pending`.
-- **`pr:<number>`** — e.g. `TCA-1234 pr:42` → set `PR_FLAG = "pr:42"` (default: `null`). Passed to `/analyze-code` to scope source scan to PR-changed files.
+- **`force`** (case-insensitive) — e.g. `PROJ-1234 force` → set `FORCE_MODE = true` (default: `false`). Resets the `generate-postman-collection` step to `pending`.
+- **`pr:<number>`** — e.g. `PROJ-1234 pr:42` → set `PR_FLAG = "pr:42"` (default: `null`). Passed to `/analyze-code` to scope source scan to PR-changed files.
 
-Flags can be combined: `TCA-1234 force pr:42`
+Flags can be combined: `PROJ-1234 force pr:42`
 
 ## Canonical Pipeline State
 

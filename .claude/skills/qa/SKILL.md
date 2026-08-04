@@ -1,9 +1,9 @@
 ---
 name: qa
-description: Full QA cycle for the TCA Cypress suite — run tests, identify failures, fix them with atomic commits, write regression test cases, and produce a health report. Use when the user says "run QA", "fix failing tests", "full QA pass", or "QA and fix".
+description: Full QA cycle for the Cypress suite — run tests, identify failures, fix them with atomic commits, write regression test cases, and produce a health report. Use when the user says "run QA", "fix failing tests", "full QA pass", or "QA and fix".
 ---
 
-# TCA QA — Run, Fix, and Report
+# QA — Run, Fix, and Report
 
 You perform a complete QA cycle: run the test suite, diagnose failures, apply minimal fixes with atomic commits, write regression tests for each fix, and deliver a health report showing before/after scores.
 
@@ -24,26 +24,27 @@ Sharp, product-minded, shipping-focused. Every fix is an atomic commit. Every fi
 | Config | `cypress.config.js` |
 | Test root | `cypress/e2e/API/` and `cypress/e2e/UI/` |
 | Reports | `cypress/reports/` (Mochawesome) |
-| Whiz Swagger | `cypress/fixtures/swagger.json` |
-| Phizz Swagger | `cypress/fixtures/phizz-swagger.json` |
+| Primary Swagger | `cypress/fixtures/swagger.json` |
+| Secondary Swagger (if any) | `cypress/fixtures/secondary-swagger.json` |
 | Issue taxonomy | `.claude/skills/qa/references/issue-taxonomy.md` |
 | Report template | `.claude/skills/qa/templates/qa-report-template.md` |
 | Tags | `@PR` (smoke), `@Smoke`, `@Regression` |
-| Whiz DB | PostgreSQL `whiz` via `cy.task("queryDb", sql)` |
-| Phizz DB | PostgreSQL `phizz` via `cy.task("queryPhizzDb", sql)` |
-| Whiz Auth | `cy.loginAndGetSessionCookie()` → `@sessionCookie` + `@csrfToken` |
-| Phizz Auth | `cy.loginAndGetPhizzSessionCookie()` → `@phizzSessionCookie` |
+| Primary DB | PostgreSQL via `cy.task("queryDb", sql)` |
+| Secondary DB (if any) | PostgreSQL via `cy.task("querySecondaryDb", sql)` |
+| Primary Auth | `cy.loginAndGetSessionCookie()` → `@sessionCookie` + `@csrfToken` |
+| Secondary Auth (if any) | `cy.loginToSecondaryApp()` → `@secondarySessionCookie` |
 | Git branch | Check with `git branch --show-current` |
 
-**Whiz DB tasks:** `queryDb`, `updateContract`, `getContractStatus`, `deleteAccountingRule`, `deleteAccountingFeeRule`, `deleteProductAndRelations`, `selectCancellationById`, `getLatestInvoiceNumber`
+**Primary DB tasks:** `queryDb` plus any purpose-built tasks registered in `cypress.config.js` (list them from `cypress/tasks/`)
 
-**Phizz DB tasks:** `queryPhizzDb`
+**Secondary DB tasks:** `querySecondaryDb` (only if your suite tests a second backend)
 
 **Known DB facts:**
-- Table: `cancel_reasons` (NOT `cancellation_reasons`)
-- Table: `contracts` — columns: `id`, `status`, `store_id` (no `odometer` column)
-- Contract statuses: `'Active'`, `'Cancelled'`, `'Voided'`
-- Hardcode `mileage = 50000` for cancellation estimate tests
+Maintain a short list here of schema gotchas specific to your product, e.g.:
+- Exact table names that are easy to get wrong (`cancel_reasons`, NOT `cancellation_reasons`)
+- Columns that do/don't exist on frequently queried tables
+- Valid status enum values
+- Safe hardcoded values for test inputs
 
 ---
 
@@ -117,7 +118,7 @@ cat cypress/reports/failures-baseline.json
 skills"). For each failure:
 - Match the error against `cypress/knowledge/failure-patterns.json` (`patterns`) — a matching
   `FP-###` already tells you the cause + proven fix; jump straight to it in Phase 4.
-- Check `cypress/knowledge/api-behavior-notes.json` (`known_500_bugs_phizz`) — if the failing
+- Check `cypress/knowledge/api-behavior-notes.json` (`known_500_bugs`) — if the failing
   endpoint is a documented app-bug, classify it as **deferred (app-side)** immediately; do not
   attempt a fix and never accept the 5xx in an assertion.
 - Cross-check `cypress/knowledge/test-run-history.json` — a test that flips pass/fail across runs is
@@ -179,7 +180,7 @@ git commit -m "fix(qa): TC-NN — [one-line description of what was wrong]"
 ```
 
 Commit message format: `fix(qa): [file-name]:TC-NN — [root cause fixed]`  
-Example: `fix(qa): 04-put-cancel-contract.cy.js:TC01 — add missing store_id and mileage to request body`
+Example: `fix(qa): 04-put-cancel-order.cy.js:TC01 — add missing store_id and quantity to request body`
 
 **4e. Re-run the fixed test**
 ```bash
@@ -203,12 +204,12 @@ it("Test Case NN: Validate missing store_id returns 400 or 422", { tags: ["@Regr
     const today = new Date().toISOString().split("T")[0];
     cy.api({
         method: "PUT",
-        url: "/api/contracts/cancel",
+        url: "/api/orders/cancel",
         body: {
-            contract_id: contractId,
+            order_id: orderId,
             cancel_date: today,
             cancel_reason_id: cancelReasonId,
-            mileage: 50000,
+            quantity: 1,
             // store_id intentionally omitted
         },
         headers: { Cookie: sessionCookie, "x-csrf-token": csrfToken },
@@ -236,9 +237,9 @@ Validate edited files with `node -e "JSON.parse(require('fs').readFileSync('<fil
 
 ### Phase 5 — Coverage Gap Analysis (after fixes)
 
-Read both swagger files and count endpoints:
-- `cypress/fixtures/swagger.json` (Whiz — main TCA platform)
-- `cypress/fixtures/phizz-swagger.json` (Phizz — claims platform)
+Read the swagger file(s) and count endpoints:
+- `cypress/fixtures/swagger.json` (primary app)
+- `cypress/fixtures/secondary-swagger.json` (secondary app, if your suite tests one)
 
 Use the Grep tool to count tested endpoints:
 ```
@@ -248,7 +249,7 @@ glob: "*.cy.js"
 output_mode: "count"
 ```
 
-Report coverage separately for Whiz and Phizz. Flag missing modules (no folder exists) as **❌ Not Started**. Flag modules with <3 test cases as **⚠️ Partial**.
+Report coverage separately per backend. Flag missing modules (no folder exists) as **❌ Not Started**. Flag modules with <3 test cases as **⚠️ Partial**.
 
 ### Phase 6 — Final Run & Health Score
 
@@ -259,7 +260,7 @@ npx cypress run \
   2>&1 | tail -30
 ```
 
-Compute TCA QA Health Score (0–100):
+Compute QA Health Score (0–100):
 
 | Dimension | Weight | Scoring |
 |---|---|---|
@@ -296,7 +297,7 @@ Classify every issue using `.claude/skills/qa/references/issue-taxonomy.md` — 
 ## REPORT FORMAT
 
 ```markdown
-# TCA QA Report
+# QA Report
 **Date:** YYYY-MM-DD  
 **Duration:** Xs  
 **Branch:** [branch name]  
@@ -352,7 +353,7 @@ Issues that were not fixed (with reason):
 
 | Issue | File | Reason deferred |
 |---|---|---|
-| TC01 still failing | 04-put-cancel-contract.cy.js | App-side bug — DB returns 500, not a test issue |
+| TC01 still failing | 04-put-cancel-order.cy.js | App-side bug — DB returns 500, not a test issue |
 
 ---
 
@@ -361,12 +362,12 @@ Issues that were not fixed (with reason):
 ### ❌ Not Started (N modules)
 | Module | Swagger Endpoints | Priority |
 |---|---|---|
-| lca-module | 12 | High |
+| payments-module | 12 | High |
 
 ### ⚠️ Partial Coverage
 | Module | Tests Present | Key Gaps |
 |---|---|---|
-| contracts-module | 8 | No auth test, no 404 test on GET by ID |
+| orders-module | 8 | No auth test, no 404 test on GET by ID |
 
 ---
 
@@ -380,8 +381,8 @@ Issues that were not fixed (with reason):
 
 ## Next Steps
 
-- Run `/generate-api-test` to add missing lca-module tests
-- Run `/add-test-cases` on contracts-module to add auth and 404 coverage
+- Run `/generate-api-test` to add missing payments-module tests
+- Run `/add-test-cases` on orders-module to add auth and 404 coverage
 - Run `/qa-only` after next deploy to verify nothing regressed
 ```
 

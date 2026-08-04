@@ -98,10 +98,10 @@ Add additional variables found in the analysis (e.g. `contract_id`, `store_id`, 
 
 Use `project.postman.loginEndpoint` and `project.postman.csrfEndpoint` as the URLs (do not hardcode).
 
-**Whiz auth is cookie-based, not token-based:** `POST /session` with `{ email, password }` sets the session cookie (Postman stores it in the cookie jar and auto-sends it on subsequent same-origin requests); a follow-up `GET /api/session` returns the gorilla CSRF token that mutations (`POST`/`PUT`/`DELETE`) must send as the `x-csrf-token` header. Do NOT read a bearer `token` from the login body — there isn't one. (Phizz is different: server-to-server `/auth` + `/ext` routes use a `Phizz-Checksum` = `SHA512(body + PHIZZ_AUTH_SALT)` header and no session/CSRF — model that separately if the ticket targets Phizz.)
+**Model your app's real auth flow (`project.postman.authType`).** For a cookie-based app: the login endpoint (e.g. `POST /session` with `{ email, password }`) sets the session cookie (Postman stores it in the cookie jar and auto-sends it on subsequent same-origin requests); a follow-up call to the CSRF endpoint (e.g. `GET /api/session`) returns the CSRF token that mutations (`POST`/`PUT`/`DELETE`) must send as the `x-csrf-token` header. Do NOT read a bearer `token` from the login body if the app doesn't return one. (If a backend uses a different scheme — e.g. server-to-server routes with a request-checksum header instead of session/CSRF — model that separately per your app's docs.)
 
 ```javascript
-// Whiz cookie + CSRF flow. Field names come from GET /api/session — verify against a
+// Cookie + CSRF flow. Field names come from the CSRF endpoint — verify against a
 // real response and keep the first that matches.
 const baseUrl       = pm.collectionVariables.get("base_url");
 const loginEndpoint = "<LOGIN_ENDPOINT_FROM_CONFIG>";   // e.g. /session

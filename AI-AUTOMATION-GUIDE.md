@@ -1,6 +1,6 @@
 # AI Automation Guide
 
-**How to use the AI-powered agents, commands, and skills in the TCA Regression Suite**
+**How to use the AI-powered agents, commands, and skills in your QA suite**
 
 This guide explains the three-tier automation system built into this framework using Claude Code. Everything runs inside your IDE (VS Code extension) or terminal (`claude` CLI).
 
@@ -17,7 +17,7 @@ This guide explains the three-tier automation system built into this framework u
 - [End-to-End Walkthrough](#end-to-end-walkthrough)
 - [Decision Guide -- What to Use When](#decision-guide----what-to-use-when)
 - [Real-World Scenarios](#real-world-scenarios)
-- [Two-Backend Architecture (Whiz + Phizz)](#two-backend-architecture-whiz--phizz)
+- [Two-Backend Architecture (Primary + Secondary)](#two-backend-architecture-primary--secondary)
 - [Configuration Reference](#configuration-reference)
 - [Sample Output Files](#sample-output-files)
 - [Troubleshooting](#troubleshooting)
@@ -33,22 +33,22 @@ This guide explains the three-tier automation system built into this framework u
 | **Claude Code** | VS Code extension or `claude` CLI — this is where you type all commands |
 | **Jira access** | The Atlassian MCP connection must be configured (agents fetch tickets and post results to Jira) |
 | **Node.js + Cypress** | The test framework — `npm install` should already be done |
-| **Product source code** | The Whiz and/or Phizz repos cloned locally (for code analysis) |
+| **Product source code** | Your product's source repo(s) cloned locally (for code analysis) |
 
 ### First-Time Setup (2 minutes)
 
 ```bash
 # 1. Clone this repo and install dependencies
-git clone <repo-url> && cd TCARegressionSuite-QA
+git clone <repo-url> && cd <your-qa-repo>
 npm install
 
 # 2. Set up your local config with your machine-specific paths
 cp .claude/project-config.local.example.json .claude/project-config.local.json
 
-# 3. Edit the local config — set the paths to your local Whiz/Phizz repos
+# 3. Edit the local config — set the paths to your local product source repos
 # Open .claude/project-config.local.json and update productCode.rootPaths:
-#   "/Users/yourname/work/go/src/phizz"
-#   "/Users/yourname/work/go/src/whiz"
+#   "/absolute/path/to/your/primary-app"
+#   "/absolute/path/to/your/secondary-app"   (only if you test a second backend)
 
 # 4. Verify the Atlassian MCP connection is active in Claude Code
 # (You should see "Atlassian" in your MCP server list)
@@ -59,7 +59,7 @@ cp .claude/project-config.local.example.json .claude/project-config.local.json
 Pick a Jira ticket and try:
 
 ```
-@manual-test-generator TCA-456
+@manual-test-generator PROJ-456
 ```
 
 The agent will:
@@ -82,7 +82,7 @@ Every Jira ticket gets a `pipeline-state.json` file that tracks which steps have
 
 ```json
 {
-  "ticketId": "TCA-456",
+  "ticketId": "PROJ-456",
   "steps": {
     "fetch-ticket": "done",
     "analyze-code": "done",
@@ -104,8 +104,8 @@ Every Jira ticket gets a `pipeline-state.json` file that tracks which steps have
 When a command needs a file that doesn't exist yet (e.g., `/create-manual-test-cases` needs the ticket context but you never ran `/fetch-ticket`), instead of failing with an error, it **automatically runs the missing prerequisite** first.
 
 ```
-You run:  /create-manual-test-cases TCA-456
-Missing:  TCA-456.json doesn't exist
+You run:  /create-manual-test-cases PROJ-456
+Missing:  PROJ-456.json doesn't exist
 Agent:    🔄 Missing ticket context — auto-running /fetch-ticket
           ✔ Fetch ticket completed
           Now continuing with create-manual-test-cases...
@@ -118,8 +118,8 @@ This means you can run any command at any point — it fills in the gaps.
 Running the same command twice is always safe — completed steps are skipped. To regenerate from scratch, add `force`:
 
 ```
-@manual-test-generator TCA-456          # skips all "done" steps
-@manual-test-generator TCA-456 force    # resets all steps, reruns everything
+@manual-test-generator PROJ-456          # skips all "done" steps
+@manual-test-generator PROJ-456 force    # resets all steps, reruns everything
 ```
 
 ### Human Gates
@@ -198,7 +198,7 @@ Write tests for PR #42
 
 # From a curl command
 /generate-api-test
-curl -X POST http://localhost:4000/api/contracts -H "Cookie: session=abc" -d '{"name":"test"}'
+curl -X POST http://localhost:4000/api/orders -H "Cookie: session=abc" -d '{"name":"test"}'
 
 # From a description
 /generate-api-test
@@ -214,7 +214,7 @@ Write tests for GET /api/stores/{id}
 - `after()` cleanup for create/update tests
 - Ready-to-run command printed at the end
 
-**Example output file:** `cypress/e2e/API/contracts-module/05-post-create-contract.cy.js`
+**Example output file:** `cypress/e2e/API/orders-module/05-post-create-order.cy.js`
 
 ---
 
@@ -270,7 +270,7 @@ Adds new test cases to a file without modifying existing tests.
 
 ```
 /add-test-cases
-Add negative tests and DB verification to cypress/e2e/API/contracts-module/01-get-contracts.cy.js
+Add negative tests and DB verification to cypress/e2e/API/orders-module/01-get-orders.cy.js
 ```
 
 **What you can ask for:**
@@ -306,7 +306,7 @@ Runs the entire test suite, fixes failures, adds regression tests, and produces 
 
 **Safety guardrails:**
 - Stops after 10 fixes or 3 consecutive reverts
-- Each fix is an atomic git commit: `fix(qa): 04-put-cancel-contract.cy.js:TC01 -- add missing store_id`
+- Each fix is an atomic git commit: `fix(qa): 04-put-cancel-order.cy.js:TC01 -- add missing store_id`
 - Reverts immediately if a fix breaks previously passing tests
 - Never fixes app-side bugs -- documents them as deferred
 
@@ -321,7 +321,7 @@ Same analysis as `/qa` but **never modifies any code**. Safe to run anytime.
 ```
 
 **What it produces:**
-- TCA QA Health Score (0-100) across 6 dimensions
+- QA Health Score (0-100) across 6 dimensions
 - Pass Rate, Coverage, Auth Tests, Negative Tests, DB Verification, Cleanup
 - List of all failures with root cause and business risk
 - Coverage gaps grouped by module
@@ -348,14 +348,14 @@ Compares your swagger specs against existing test files to find untested endpoin
 ```
 
 **What it produces:**
-- Total endpoint count from both Whiz and Phizz swagger specs
+- Total endpoint count from your swagger spec(s) — primary, plus secondary if configured
 - Classification of every endpoint: Covered / Partial / Missing
 - Missing endpoints grouped by module
 - Priority recommendations (which modules to tackle first)
 
 **Output example:**
 ```
-Total endpoints in swagger:     436 (Whiz) + 181 (Phizz)
+Total endpoints in swagger:     436 (primary) + 181 (secondary)
 Covered:                        285  (46%)
 Partially covered:               42  (7%)
 Missing:                        290  (47%)
@@ -411,7 +411,7 @@ Connects to Jira via the Atlassian MCP, downloads the ticket's full details (sum
 
 #### /analyze-code TKT-123 [pr:N]
 
-Searches the product source code (both Whiz and Phizz repos) for files related to the ticket. Extracts keywords from the ticket, greps both repos, reads matching files, and produces a comparison table showing which requirements are implemented vs missing.
+Searches the product source code (every repo listed in `productCode.rootPaths`) for files related to the ticket. Extracts keywords from the ticket, greps each repo, reads matching files, and produces a comparison table showing which requirements are implemented vs missing.
 
 - **Reads:** Ticket context JSON + source code repos (from `productCode.rootPaths` in local config)
 - **Saves:** `docs/.ticket-context/TKT-123-analysis.md`
@@ -451,7 +451,7 @@ Reads the manual test cases tagged `Type: API` or `Type: Mixed` and generates a 
 Reads the manual test cases tagged `Type: UI` or `Type: Mixed` and generates a Cypress UI spec file using the Page Object pattern. Creates a new Page Object if one doesn't exist.
 
 - **Reads:** Manual test cases + ticket context + code analysis + existing Page Objects
-- **Saves:** `cypress/e2e/JiraTicket/TS_<NUMBER>_<FeatureDescription>.cy.js` when the current git branch name contains the ticket ID, else `cypress/e2e/UI/<module>/[NN]-[action-description].cy.js` + optional Page Object
+- **Saves:** `cypress/e2e/JiraTicket/<TICKET>_<NUMBER>_<FeatureDescription>.cy.js` when the current git branch name contains the ticket ID, else `cypress/e2e/UI/<module>/[NN]-[action-description].cy.js` + optional Page Object
 - **Pipeline key:** `create-ui-automated-test-cases`
 - **Hard gate:** Manual test cases must exist
 
@@ -551,12 +551,12 @@ Every agent accepts optional flags after the ticket ID:
 
 | Flag | What It Does | Example |
 |---|---|---|
-| `force` | Resets this agent's pipeline steps to "pending" so they run again from scratch | `@manual-test-generator TCA-456 force` |
-| `pr:<N>` | Scopes the code analysis step to only scan files changed in PR #N, instead of grepping the entire codebase. If more than 10 source files changed, you'll be asked to increase the limit | `@manual-test-generator TCA-456 pr:42` |
+| `force` | Resets this agent's pipeline steps to "pending" so they run again from scratch | `@manual-test-generator PROJ-456 force` |
+| `pr:<N>` | Scopes the code analysis step to only scan files changed in PR #N, instead of grepping the entire codebase. If more than 10 source files changed, you'll be asked to increase the limit | `@manual-test-generator PROJ-456 pr:42` |
 
-Flags can be combined: `@manual-test-generator TCA-456 force pr:42`
+Flags can be combined: `@manual-test-generator PROJ-456 force pr:42`
 
-> **Note:** The `force` flag is scoped per agent. Running `@api-automation-test-generator TCA-456 force` only resets the API automation steps — it does NOT re-fetch the ticket or re-analyze code. To regenerate everything, run `@manual-test-generator TCA-456 force` first.
+> **Note:** The `force` flag is scoped per agent. Running `@api-automation-test-generator PROJ-456 force` only resets the API automation steps — it does NOT re-fetch the ticket or re-analyze code. To regenerate everything, run `@manual-test-generator PROJ-456 force` first.
 
 ---
 
@@ -568,16 +568,16 @@ This is the **first agent you run for any Jira ticket**. It fetches the ticket f
 
 ```
 # Standard run — full pipeline from fetch to post
-@manual-test-generator TCA-456
+@manual-test-generator PROJ-456
 
 # Force regenerate everything (resets all 4 steps to pending)
-@manual-test-generator TCA-456 force
+@manual-test-generator PROJ-456 force
 
 # Scope code analysis to only files changed in PR #42
-@manual-test-generator TCA-456 pr:42
+@manual-test-generator PROJ-456 pr:42
 
 # Both flags together
-@manual-test-generator TCA-456 force pr:42
+@manual-test-generator PROJ-456 force pr:42
 ```
 
 #### Detailed Pipeline Flow
@@ -609,7 +609,7 @@ This is the **first agent you run for any Jira ticket**. It fetches the ticket f
 │
 ├── Step 2: /analyze-code TKT-123 [pr:<N>]
 │   │
-│   │  Searches the product source code (Whiz + Phizz repos) to understand
+│   │  Searches the product source code (all configured repos) to understand
 │   │  what code exists for the ticket's requirements. Produces a comparison
 │   │  table that drives test case generation in Step 3.
 │   │
@@ -620,7 +620,7 @@ This is the **first agent you run for any Jira ticket**. It fetches the ticket f
 │   │   │   reads only the changed source files (default limit: 10).
 │   │   │   If file count exceeds limit, lists all files and asks
 │   │   │   user to increase the limit or read all
-│   │   └── Full mode (default): greps both Whiz + Phizz source repos
+│   │   └── Full mode (default): greps every configured source repo
 │   │       by keyword, reads max 5 matching files per repo
 │   ├── Scans existing test suite structure:
 │   │   ├── API specs in cypress/e2e/API/
@@ -731,16 +731,16 @@ Takes the manual test cases tagged `Type: API` or `Type: Mixed` (generated by `@
 
 ```
 # Standard run — generate spec, validate, and run tests
-@api-automation-test-generator TCA-456
+@api-automation-test-generator PROJ-456
 
 # Force regenerate the API spec + revalidate + rerun (keeps fetch/analyze from prior run)
-@api-automation-test-generator TCA-456 force
+@api-automation-test-generator PROJ-456 force
 
 # Scope code analysis to PR-changed files (if analyze-code hasn't run yet)
-@api-automation-test-generator TCA-456 pr:42
+@api-automation-test-generator PROJ-456 pr:42
 
 # Both flags together
-@api-automation-test-generator TCA-456 force pr:42
+@api-automation-test-generator PROJ-456 force pr:42
 ```
 
 #### Detailed Pipeline Flow
@@ -788,7 +788,7 @@ Takes the manual test cases tagged `Type: API` or `Type: Mixed` (generated by `@
 │   │
 │   │  For every endpoint the spec automates that returns a 200 JSON body, adds a
 │   │  hand-style draft-07 schema in cypress/fixtures/schemas/<name>.schema.json and
-│   │  one per-endpoint spec in cypress/e2e/API/schema-validation/<whiz|phizz>/
+│   │  one per-endpoint spec in cypress/e2e/API/schema-validation/<primary|secondary>/
 │   │  (cy.fixture + to.be.jsonSchema). Reuses an existing schema if present; skips
 │   │  non-JSON responses (PDF/CSV/307 download).
 │   └── Sets: pipeline-state → create-schema-validation = "done"
@@ -860,7 +860,7 @@ Takes the manual test cases tagged `Type: API` or `Type: Mixed` (generated by `@
 
 | # | Issue |
 |---|---|
-| 1 | No Phizz ticket routing — all generated tests use Whiz auth. Config has `auth.phizz` but no agent auto-detects Phizz tickets |
+| 1 | No secondary-backend ticket routing — all generated tests use the primary app's auth. Config supports `auth.secondary` but no agent auto-detects tickets that target the secondary backend |
 | 2 | Schema validation tests ARE auto-generated for 200-JSON endpoints (pipeline Step 2 → schema JSON in `cypress/fixtures/schemas/` + a per-endpoint spec in `schema-validation/`). Non-JSON responses (PDF/CSV/307) are skipped by design and noted in the spec |
 | 3 | DB assertions for POST/PUT/DELETE not auto-generated. You may need to add `cy.task("queryDb")` assertions manually |
 
@@ -872,26 +872,26 @@ Takes the manual test cases tagged `Type: UI` or `Type: Mixed`, **explores the l
 
 **Prerequisites:**
 - Manual test cases with `Type: UI` or `Type: Mixed` sections must exist. Run `@manual-test-generator` first.
-- **Browser MCP (`claude-in-chrome`) connected** and the **app running locally** (Whiz `:4000`, Phizz `:3000`) — the exploration step drives the real app. DB creds in `cypress.env.json` for test-data discovery.
+- **Browser MCP (`claude-in-chrome`) connected** and the **app running locally** (at the base URL(s) set in `app.primaryBaseUrl` / `app.secondaryBaseUrl`) — the exploration step drives the real app. DB creds in `cypress.env.json` for test-data discovery.
 - Login uses **Option A (auto-detect session):** the agent reuses an already-logged-in browser; only if no session is live does it fill your email and pause for you to type the password + click Login. It never types/reads your password. (The generated specs still authenticate programmatically, so test *runs* need no human.)
 
 #### Usage Examples
 
 ```
 # Standard run — explore live app, generate UI spec, validate, and run headless
-@ui-automation-test-generator TCA-456
+@ui-automation-test-generator PROJ-456
 
 # Watch the run in a visible browser
-@ui-automation-test-generator TCA-456 headed
+@ui-automation-test-generator PROJ-456 headed
 
 # Force re-explore + regenerate the UI spec + revalidate + rerun
-@ui-automation-test-generator TCA-456 force
+@ui-automation-test-generator PROJ-456 force
 
 # Scope code analysis to PR-changed files
-@ui-automation-test-generator TCA-456 pr:42
+@ui-automation-test-generator PROJ-456 pr:42
 
 # Both flags together
-@ui-automation-test-generator TCA-456 force pr:42
+@ui-automation-test-generator PROJ-456 force pr:42
 ```
 
 #### Detailed Pipeline Flow
@@ -952,8 +952,8 @@ Takes the manual test cases tagged `Type: UI` or `Type: Mixed`, **explores the l
 │   ├── Creates a new Page Object if none exists for the module:
 │   │   ├── Class with getter methods for each element selector
 │   │   ├── Action methods (navigateTo, fillField, clickSubmit, etc.)
-│   │   └── Saves: cypress/e2e/pages/<domain>/<ModuleName>Page.js (auth/, store/, claims/, lca/, admin/<section>/)
-│   ├── Saves: cypress/e2e/JiraTicket/TS_<NUMBER>_<Feature>.cy.js (ticket ID in branch name)
+│   │   └── Saves: cypress/e2e/pages/<domain>/<ModuleName>Page.js (auth/, orders/, users/, admin/<section>/)
+│   ├── Saves: cypress/e2e/JiraTicket/<TICKET>_<NUMBER>_<Feature>.cy.js (ticket ID in branch name)
 │   │          else cypress/e2e/UI/<module>/[NN]-[action-description].cy.js
 │   └── Sets: pipeline-state → create-ui-automated-test-cases = "done"
 │
@@ -994,8 +994,8 @@ Takes the manual test cases tagged `Type: UI` or `Type: Mixed`, **explores the l
 | Output | Location |
 |---|---|
 | Live-app exploration notes | `docs/.ticket-context/TKT-123-exploration.md` (verified selectors, DOM/async notes, exact error text, test-data query) |
-| Cypress UI spec | `cypress/e2e/JiraTicket/TS_<NUMBER>_<Feature>.cy.js` (ticket ID in branch name) else `cypress/e2e/UI/<module>/[NN]-[action-description].cy.js` |
-| Page Object (new) | `cypress/e2e/pages/<domain>/<ModuleName>Page.js` (domain folder: `auth/`, `store/`, `claims/`, `lca/`, `admin/<section>/`) |
+| Cypress UI spec | `cypress/e2e/JiraTicket/<TICKET>_<NUMBER>_<Feature>.cy.js` (ticket ID in branch name) else `cypress/e2e/UI/<module>/[NN]-[action-description].cy.js` |
+| Page Object (new) | `cypress/e2e/pages/<domain>/<ModuleName>Page.js` (domain folder: `auth/`, `orders/`, `users/`, `admin/<section>/`) |
 | Validation report | Printed to console |
 | Test results | Jira comment on parent ticket |
 | Screenshots (on failure) | `cypress/screenshots/` |
@@ -1017,7 +1017,7 @@ Takes the manual test cases tagged `Type: UI` or `Type: Mixed`, **explores the l
 
 | # | Issue |
 |---|---|
-| 1 | No Phizz ticket routing — same as API agent |
+| 1 | No secondary-backend ticket routing — same as API agent |
 | 2 | Exploration is interactive and browser-heavy — it needs the browser MCP (`claude-in-chrome`) connected and the app running locally, and (for a cold session) a one-time manual login. Not suited to fully-headless/cron runs |
 | 3 | Exploration itself is non-deterministic (clicks may vary run to run); determinism of the *generated spec* comes from the captured selectors + DB-picked data, not the exploration session |
 
@@ -1033,16 +1033,16 @@ Analyzes the API endpoints related to a Jira ticket and generates a ready-to-imp
 
 ```
 # Standard run — fetch ticket, analyze code, generate collection
-@postman-collection-generator TCA-456
+@postman-collection-generator PROJ-456
 
 # Force regenerate the collection (keeps fetch/analyze from prior run)
-@postman-collection-generator TCA-456 force
+@postman-collection-generator PROJ-456 force
 
 # Scope code analysis to PR-changed files
-@postman-collection-generator TCA-456 pr:42
+@postman-collection-generator PROJ-456 pr:42
 
 # Both flags together
-@postman-collection-generator TCA-456 force pr:42
+@postman-collection-generator PROJ-456 force pr:42
 ```
 
 #### Detailed Pipeline Flow
@@ -1086,7 +1086,7 @@ Analyzes the API endpoints related to a Jira ticket and generates a ready-to-imp
 │   │   ├── Collection info (UUID, name from ticket summary, description, schema version)
 │   │   ├── Collection-level pre-request script (auto-login on first request)
 │   │   ├── Collection variables: base_url, auth_token, csrf_token, session_cookie
-│   │   │   └── Plus dynamic variables discovered from analysis (contract_id, store_id, etc.)
+│   │   │   └── Plus dynamic variables discovered from analysis (order_id, store_id, etc.)
 │   │   ├── Request items per endpoint:
 │   │   │   ├── Method, URL with {{base_url}} prefix, path/query parameters
 │   │   │   ├── Headers (Cookie, x-csrf-token, Content-Type)
@@ -1108,7 +1108,7 @@ Analyzes the API endpoints related to a Jira ticket and generates a ready-to-imp
 │   │   #, Request Name, Method, Endpoint, Auth, Test Count
 │   ├── You can:
 │   │   ├── approve — finalize and optionally post to Jira
-│   │   ├── add <endpoint> — add a missing request (e.g. "add DELETE /api/contracts/:id")
+│   │   ├── add <endpoint> — add a missing request (e.g. "add DELETE /api/orders/:id")
 │   │   ├── remove <name> — remove a request by name
 │   │   └── skip jira — save the file without posting a Jira comment
 │   └── Loops until you approve
@@ -1144,7 +1144,7 @@ Analyzes the API endpoints related to a Jira ticket and generates a ready-to-imp
 
 | # | Issue |
 |---|---|
-| 1 | No Phizz auth handling — collection always uses the Whiz login endpoint |
+| 1 | No secondary-backend auth handling — the collection always uses the primary app's login endpoint |
 | 2 | Does not read swagger specs for endpoint discovery (relies only on code analysis) |
 | 3 | No Postman Environment file generated. You must manually create environments in Postman |
 | 4 | `postman/collections/` directory doesn't exist in repo. Created automatically at runtime |
@@ -1164,7 +1164,7 @@ Analyzes the API endpoints related to a Jira ticket and generates a ready-to-imp
 | **Local config support** | Yes | Yes | Yes | Yes |
 | **Cloud ID auto-resolve** | Yes | Yes | Yes | Yes |
 | **Jira error handling** | Yes (fetch + post) | Yes (fetch + run) | Yes (fetch + run) | Yes (fetch + comment) |
-| **Phizz support** | Source scan: Yes. Auth: N/A | No routing | No routing | No routing |
+| **Secondary backend support** | Source scan: Yes. Auth: N/A | No routing | No routing | No routing |
 | **Default run mode** | N/A | Headless | Headed (visible browser) | N/A |
 | **Jira output** | Test issues created | Results comment | Results comment | File path comment (optional) |
 | **Idempotent rerun** | Yes | Yes | Yes | Yes |
@@ -1188,7 +1188,7 @@ All agents are idempotent. On rerun:
 
 | # | Issue | Workaround |
 |---|---|---|
-| 1 | **No Phizz ticket routing.** Config has `auth.phizz` but no agent auto-detects Phizz tickets. All generated tests use Whiz auth | Manually edit generated specs to use Phizz login command and base URL |
+| 1 | **No secondary-backend ticket routing.** Config supports `auth.secondary` but no agent auto-detects tickets that target a second backend. All generated tests use the primary app's auth | Manually edit generated specs to use your secondary app's login command and base URL |
 | 2 | **No git branch/commit guidance.** Generated files are written to the working tree but never committed | Review and commit generated files yourself |
 
 ---
@@ -1200,43 +1200,43 @@ Here's exactly what happens when you run the full pipeline for a Jira ticket, st
 ### Step 1: Generate Manual Test Cases + Post to Jira
 
 ```
-@manual-test-generator TCA-456
+@manual-test-generator PROJ-456
 ```
 
 **What you see:**
 
 ```
 ✔ Reading project config...
-✔ Fetching TCA-456 from Jira...
+✔ Fetching PROJ-456 from Jira...
 
-  Title: Add ability to manually expire maintenance contracts
+  Title: Add ability to manually expire user subscriptions
   Type: Story | Status: In Progress | Priority: Medium
-  Comments: 3 fetched (key insight: "only affects non-Asbury stores")
+  Comments: 3 fetched (key insight: "only affects monthly plans")
 
-✔ Saved: docs/.ticket-context/TCA-456.json
-✔ Saved: docs/.ticket-context/TCA-456-discussion.md
+✔ Saved: docs/.ticket-context/PROJ-456.json
+✔ Saved: docs/.ticket-context/PROJ-456-discussion.md
 ✔ Pipeline state: fetch-ticket → done
 
 ✔ Analyzing source code...
-  Scanned: whiz/controllers/contracts.go, whiz/models/contract.go (+ 3 more)
-  Found: PUT /api/contracts/:id/expire, GET /api/contracts
+  Scanned: backend/controllers/subscriptions.go, backend/models/subscription.go (+ 3 more)
+  Found: PUT /api/subscriptions/:id/expire, GET /api/subscriptions
   Comparison: 4 ✅ implemented, 1 ⚠️ partial, 1 ❌ not implemented
 
-✔ Saved: docs/.ticket-context/TCA-456-analysis.md
+✔ Saved: docs/.ticket-context/PROJ-456-analysis.md
 ✔ Pipeline state: analyze-code → done
 
 ✔ Generating manual test cases...
   Created 14 test cases across 4 sections (API: 8, UI: 4, Mixed: 2)
 
-✔ Saved: docs/test-cases/TCA-456.md
+✔ Saved: docs/test-cases/PROJ-456.md
 ✔ Pipeline state: create-manual-test-cases → done
 
-  Manual Test Cases for TCA-456 — Review Before Posting
+  Manual Test Cases for PROJ-456 — Review Before Posting
 
   | # | Summary                                           | Type | In Jira |
   |---|---------------------------------------------------|------|---------|
   | 1 | Verify that PUT /expire returns 200 for active... | API  | —       |
-  | 2 | Verify that expired contract status changes to... | API  | —       |
+  | 2 | Verify that expired subscription status changes...| API  | —       |
   | 3 | Verify that the Expire button is disabled for...  | UI   | —       |
   ...
 
@@ -1253,23 +1253,23 @@ Here's exactly what happens when you run the full pipeline for a Jira ticket, st
 
 ```
 ✔ Creating Test issues in Jira (batch 1 of 2)...
-✔ Created: TCA-501, TCA-502, TCA-503, TCA-504, TCA-505, TCA-506, TCA-507, TCA-508
+✔ Created: PROJ-501, PROJ-502, PROJ-503, PROJ-504, PROJ-505, PROJ-506, PROJ-507, PROJ-508
 ✔ Creating Test issues in Jira (batch 2 of 2)...
-✔ Created: TCA-509, TCA-510, TCA-511, TCA-512, TCA-513, TCA-514
-✔ All 14 issues linked to TCA-456
-✔ Summary comment posted to TCA-456
+✔ Created: PROJ-509, PROJ-510, PROJ-511, PROJ-512, PROJ-513, PROJ-514
+✔ All 14 issues linked to PROJ-456
+✔ Summary comment posted to PROJ-456
 ✔ Pipeline state: post-tests-to-jira → done
 
 Final Summary:
-  Ticket: TCA-456 — Add ability to manually expire maintenance contracts
+  Ticket: PROJ-456 — Add ability to manually expire user subscriptions
   Test cases: 14 created, 14 linked to parent
-  Jira keys: TCA-501 through TCA-514
+  Jira keys: PROJ-501 through PROJ-514
 ```
 
 ### Step 2: Generate and Run API Automation
 
 ```
-@api-automation-test-generator TCA-456
+@api-automation-test-generator PROJ-456
 ```
 
 **What you see:**
@@ -1284,7 +1284,7 @@ Final Summary:
   Automated: TC 1, 2, 5, 9 (happy path + negative + unauth)
   Skipped: TC 3, 4, 6, 7, 8 (exceeded limit — listed for reference)
 
-✔ Saved: cypress/e2e/API/contracts-module/05-put-expire-contract.cy.js
+✔ Saved: cypress/e2e/API/subscriptions-module/05-put-expire-subscription.cy.js
 ✔ Pipeline state: create-api-automated-test-cases → done
 
 ✔ Validating spec...
@@ -1300,7 +1300,7 @@ Final Summary:
 
 ✔ Pipeline state: validate-api-spec → done
 
-Run API Tests for TCA-456?
+Run API Tests for PROJ-456?
   Default: headless mode, local environment.
   - yes / approve — run with defaults
   - skip — finish without running
@@ -1309,20 +1309,20 @@ Run API Tests for TCA-456?
 **You type:** `yes`
 
 ```
-✔ Running: npx cypress run --spec "cypress/e2e/API/contracts-module/05-put-expire-contract.cy.js"
+✔ Running: npx cypress run --spec "cypress/e2e/API/subscriptions-module/05-put-expire-subscription.cy.js"
 
-  ✅ TC-01: [TCA-456] Validate PUT /expire returns 200         (1.2s)
-  ✅ TC-02: [TCA-456] Validate PUT /expire with invalid ID      (0.8s)
-  ❌ TC-03: [TCA-456] Validate PUT /expire missing body         (0.9s)
+  ✅ TC-01: [PROJ-456] Validate PUT /expire returns 200         (1.2s)
+  ✅ TC-02: [PROJ-456] Validate PUT /expire with invalid ID      (0.8s)
+  ❌ TC-03: [PROJ-456] Validate PUT /expire missing body         (0.9s)
      → Expected 400, got 500. Diagnosing...
      → Fix: request body was empty object, backend expects { reason: "" }
      → Retry 1/3...
-  ✅ TC-03: [TCA-456] Validate PUT /expire missing body         (0.9s)  ← fixed
-  ✅ TC-04: [TCA-456] Validate unauthenticated request          (0.5s)
+  ✅ TC-03: [PROJ-456] Validate PUT /expire missing body         (0.9s)  ← fixed
+  ✅ TC-04: [PROJ-456] Validate unauthenticated request          (0.5s)
 
   4 passing (4.3s)
 
-✔ Results posted to Jira (TCA-456)
+✔ Results posted to Jira (PROJ-456)
 ✔ Report: cypress/reports/html/index.html
 ✔ Pipeline state: run-api-tests → done
 ```
@@ -1334,20 +1334,20 @@ After running both agents, here's what exists on disk:
 ```
 docs/
 ├── .ticket-context/
-│   ├── TCA-456.json                    ← ticket data from Jira
-│   ├── TCA-456-discussion.md           ← comment analysis
-│   ├── TCA-456-analysis.md             ← source code analysis
-│   ├── TCA-456-test-keys.json          ← Jira issue ledger (TC# → key)
-│   └── TCA-456-pipeline-state.json     ← tracks which steps are done
+│   ├── PROJ-456.json                    ← ticket data from Jira
+│   ├── PROJ-456-discussion.md           ← comment analysis
+│   ├── PROJ-456-analysis.md             ← source code analysis
+│   ├── PROJ-456-test-keys.json          ← Jira issue ledger (TC# → key)
+│   └── PROJ-456-pipeline-state.json     ← tracks which steps are done
 │
 └── test-cases/
-    └── TCA-456.md                      ← manual test cases
+    └── PROJ-456.md                      ← manual test cases
 
 cypress/
 ├── e2e/
 │   └── API/
-│       └── contracts-module/
-│           └── 05-put-expire-contract.cy.js  ← generated API spec
+│       └── subscriptions-module/
+│           └── 05-put-expire-subscription.cy.js  ← generated API spec
 │
 └── reports/
     └── html/
@@ -1418,22 +1418,22 @@ START: What do you need?
 
 ### Scenario 1: New Feature Story from Jira
 
-A new Jira story `TCA-456` comes in: "Add endpoint to update store hours."
+A new Jira story `PROJ-456` comes in: "Add endpoint to update store hours."
 
 ```bash
 # Step 1: Generate manual test cases and post to Jira
-@manual-test-generator TCA-456
+@manual-test-generator PROJ-456
 # Review the test cases when prompted, approve them
 
 # Step 2: Generate and run API automation
-@api-automation-test-generator TCA-456
+@api-automation-test-generator PROJ-456
 # Spec created, validated, executed — results posted to Jira
 
 # Step 3: If the story has UI changes too
-@ui-automation-test-generator TCA-456
+@ui-automation-test-generator PROJ-456
 
 # Step 4 (optional): Generate a Postman collection for the dev team
-@postman-collection-generator TCA-456
+@postman-collection-generator PROJ-456
 ```
 
 For a detailed view of what you see at each step, see [End-to-End Walkthrough](#end-to-end-walkthrough).
@@ -1455,13 +1455,13 @@ The skill reads the PR diff, detects the new endpoint, and generates a complete 
 
 ### Scenario 3: A Test Started Failing After a Backend Change
 
-The CI pipeline shows `04-put-cancel-contract.cy.js` failing.
+The CI pipeline shows `04-put-cancel-order.cy.js` failing.
 
 ```bash
 /fix-test
 # Paste the error:
 # CypressError: expected 400 to equal 200
-# at Context.eval (cypress/e2e/API/contract-cancellation-module/04-put-cancel-contract.cy.js:45)
+# at Context.eval (cypress/e2e/API/orders-module/04-put-cancel-order.cy.js:45)
 ```
 
 The skill reads the file, checks the swagger, finds the request body is missing `store_id`, fixes it, and shows you the diff.
@@ -1487,11 +1487,11 @@ Before cutting a release, check the test suite health:
 
 ### Scenario 5: Expanding Test Coverage for a Module
 
-You have `01-get-contracts.cy.js` with only happy path tests. Need more coverage.
+You have `01-get-orders.cy.js` with only happy path tests. Need more coverage.
 
 ```bash
 /add-test-cases
-Add regression cases and DB verification to cypress/e2e/API/contracts-module/01-get-contracts.cy.js
+Add regression cases and DB verification to cypress/e2e/API/orders-module/01-get-orders.cy.js
 ```
 
 The skill reads the existing file, continues numbering from the last test case, and adds unauthenticated, missing field, invalid ID, and DB verification tests.
@@ -1503,7 +1503,7 @@ The skill reads the existing file, continues numbering from the last test case, 
 You need to share API documentation with a frontend developer.
 
 ```bash
-@postman-collection-generator TCA-789
+@postman-collection-generator PROJ-789
 ```
 
 Generates a Postman Collection JSON with all endpoints from the ticket, pre-configured auth, and test assertions. Import directly into Postman.
@@ -1512,14 +1512,14 @@ Generates a Postman Collection JSON with all endpoints from the ticket, pre-conf
 
 ### Scenario 7: Force Regenerating Tests After Requirements Changed
 
-The Jira ticket `TCA-456` was updated — new acceptance criteria were added and a comment narrowed the scope. You already ran the manual test generator last week, but need new test cases based on the latest ticket state.
+The Jira ticket `PROJ-456` was updated — new acceptance criteria were added and a comment narrowed the scope. You already ran the manual test generator last week, but need new test cases based on the latest ticket state.
 
 ```bash
 # Regenerate everything from scratch — re-fetches ticket, re-analyzes code, regenerates TCs
-@manual-test-generator TCA-456 force
+@manual-test-generator PROJ-456 force
 
 # Now regenerate the API spec to match the new manual TCs
-@api-automation-test-generator TCA-456 force
+@api-automation-test-generator PROJ-456 force
 ```
 
 **What `force` resets per agent:**
@@ -1528,26 +1528,26 @@ The Jira ticket `TCA-456` was updated — new acceptance criteria were added and
 - `@ui-automation-test-generator force` resets: `create-ui-automated-test-cases`, `validate-ui-spec`, `run-ui-tests`
 - `@postman-collection-generator force` resets: `generate-postman-collection`
 
-**Note:** Force is scoped. Running `@api-automation-test-generator TCA-456 force` does NOT re-fetch the ticket — it only regenerates the API spec. If you need fresh ticket data too, run `@manual-test-generator TCA-456 force` first.
+**Note:** Force is scoped. Running `@api-automation-test-generator PROJ-456 force` does NOT re-fetch the ticket — it only regenerates the API spec. If you need fresh ticket data too, run `@manual-test-generator PROJ-456 force` first.
 
 ---
 
 ### Scenario 8: Scoping Code Analysis to a Specific PR
 
-A developer opens PR #42 for ticket `TCA-789`. Instead of scanning the entire Whiz and Phizz codebases, you want to analyze only the files changed in that PR.
+A developer opens PR #42 for ticket `PROJ-789`. Instead of scanning your entire product codebase, you want to analyze only the files changed in that PR.
 
 ```bash
 # Generate manual TCs based only on PR-changed files
-@manual-test-generator TCA-789 pr:42
+@manual-test-generator PROJ-789 pr:42
 
 # Or just run code analysis standalone with PR scope
-/analyze-code TCA-789 pr:42
+/analyze-code PROJ-789 pr:42
 ```
 
 **What `pr:42` changes:**
 - Instead of grepping both repos by keyword (which may find unrelated files), it calls `gh pr view 42 --json files` and reads only the changed source files (default limit: 10)
 - If the PR has more than 10 source files, it lists all files and asks you whether to increase the limit or read all of them — no files are silently skipped
-- Produces a more focused `TCA-789-analysis.md` with only the relevant endpoints and comparison table entries
+- Produces a more focused `PROJ-789-analysis.md` with only the relevant endpoints and comparison table entries
 - The rest of the pipeline (manual TCs, automation) uses this narrower analysis
 
 **Note:** Without `pr:<N>`, the command defaults to a full keyword scan across all product repos.
@@ -1563,42 +1563,42 @@ A developer opens PR #42 for ticket `TCA-789`. Instead of scanning the entire Wh
 
 ---
 
-## Two-Backend Architecture (Whiz + Phizz)
+## Two-Backend Architecture (Primary + Secondary)
 
-This framework tests **two separate backends**. The AI system is aware of both.
+This framework can test **two separate backends** — a primary app plus an optional secondary one (e.g. a companion service with its own API, DB, and auth). If your suite only tests one backend, leave the secondary config keys `null` and skip this section. The example names below (`cy.loginToSecondaryApp()`, `querySecondaryDb`) are conventions — match them to whatever your `cypress/support/commands.js` and `cypress/tasks/` actually define.
 
-|                    | Whiz (Main TCA Platform)            | Phizz (Claims Platform)                  |
-|--------------------|-------------------------------------|------------------------------------------|
-| **Port**           | `localhost:4000`                    | `localhost:3000`                         |
-| **Login command**   | `cy.loginAndGetSessionCookie()`     | `cy.loginAndGetPhizzSessionCookie()`     |
-| **Session alias**   | `@sessionCookie` + `@csrfToken`     | `@phizzSessionCookie`                    |
-| **Base URL**        | `baseUrl` (from cypress.config.js)  | `Cypress.env("PHIZZ_BASE_URL")`         |
-| **DB task**         | `cy.task("queryDb", ...)`           | `cy.task("queryPhizzDb", ...)`           |
-| **Swagger spec**    | `cypress/fixtures/swagger.json`     | `cypress/fixtures/phizz-swagger.json`    |
-| **Test folder**     | `cypress/e2e/API/<module>-module/`  | `cypress/e2e/API/phizz-module/<feature>/`|
-| **Env var prefix**  | none (`LOGIN_EMAIL`, `DB_HOST`)     | `PHIZZ_` (`PHIZZ_BASE_URL`, `PHIZZ_DB_HOST`) |
+|                    | Primary App (main backend)          | Secondary App (optional)                          |
+|--------------------|-------------------------------------|---------------------------------------------------|
+| **Port**           | e.g. `localhost:4000`               | e.g. `localhost:3000`                             |
+| **Login command**   | `cy.loginAndGetSessionCookie()`     | `cy.loginToSecondaryApp()` (example)              |
+| **Session alias**   | `@sessionCookie` + `@csrfToken`     | `@secondarySessionCookie`                         |
+| **Base URL**        | `baseUrl` (from cypress.config.js)  | `Cypress.env("SECONDARY_BASE_URL")`               |
+| **DB task**         | `cy.task("queryDb", ...)`           | `cy.task("querySecondaryDb", ...)`                |
+| **Swagger spec**    | `cypress/fixtures/swagger.json`     | `cypress/fixtures/secondary-swagger.json`         |
+| **Test folder**     | `cypress/e2e/API/<module>-module/`  | `cypress/e2e/API/<secondary-app>-module/<feature>/` |
+| **Env var prefix**  | none (`LOGIN_EMAIL`, `DB_HOST`)     | `SECONDARY_` (`SECONDARY_BASE_URL`, `SECONDARY_DB_HOST`) |
 
 ### How the AI Detects Which Backend
 
-- **By test file location:** Files under `phizz-module/` -> Phizz; everything else -> Whiz
-- **By curl cookie:** `_phizzsession` cookie -> Phizz; `_whizsession` -> Whiz
-- **By port in URL:** `:3000` -> Phizz; `:4000` -> Whiz
-- **By swagger:** The skills read both swagger files and report coverage separately
+- **By test file location:** Files under the secondary app's module folder -> secondary; everything else -> primary
+- **By curl cookie:** Each app's session cookie has a distinct name — the skill matches the cookie name to the app
+- **By port in URL:** The port maps to `app.primaryBaseUrl` / `app.secondaryBaseUrl` in project-config
+- **By swagger:** The skills read both swagger files (if a secondary one is configured) and report coverage separately
 
-### Phizz-Specific Examples
+### Secondary-Backend Examples
 
 ```bash
-# Generate tests for a phizz endpoint
+# Generate tests for a secondary-app endpoint
 /generate-api-test
-Write tests for GET /api/automotive_claims on port 3000
+Write tests for GET /api/shipments on port 3000
 
-# Audit phizz coverage
+# Audit secondary-app coverage
 /audit-coverage
-# Output will show separate sections for Whiz and Phizz coverage
+# Output will show separate sections for primary and secondary coverage
 
-# Fix a failing phizz test
+# Fix a failing secondary-app test
 /fix-test
-# The skill detects phizz-module/ in the file path and uses phizz-swagger.json
+# The skill detects the secondary module folder in the file path and uses secondary-swagger.json
 ```
 
 ---
@@ -1621,14 +1621,14 @@ cp .claude/project-config.local.example.json .claude/project-config.local.json
 | `paths.uiTests` | `cypress/e2e/UI` | Where UI specs are created |
 | `paths.pages` | `cypress/e2e/pages` | Page Object files |
 | `paths.fixtures` | `cypress/fixtures` | Test data and schemas |
-| `paths.swaggerWhiz` | `cypress/fixtures/swagger.json` | Whiz API spec |
-| `paths.swaggerPhizz` | `cypress/fixtures/phizz-swagger.json` | Phizz API spec |
-| `auth.whiz.loginCommand` | `cy.loginAndGetSessionCookie()` | Whiz auth in generated tests |
-| `auth.phizz.loginCommand` | `cy.loginAndGetPhizzSessionCookie()` | Phizz auth in generated tests |
+| `paths.swaggerPrimary` | `cypress/fixtures/swagger.json` | Primary app's API spec |
+| `paths.swaggerSecondary` | `cypress/fixtures/secondary-swagger.json` (or `null`) | Secondary app's API spec, if you test one |
+| `auth.primary.loginCommand` | `cy.loginAndGetSessionCookie()` | Primary-app auth in generated tests |
+| `auth.secondary.loginCommand` | `cy.loginToSecondaryApp()` (or `null`) | Secondary-app auth in generated tests |
 | `testLimits.bugMaxTests` | `2` | Max automated tests for bug tickets |
 | `testLimits.storyMaxTests` | `8` | Target automated tests per SPEC FILE for story tickets (multi-layer tickets get multiple spec files) |
-| `productCode.rootPaths` | `[]` (set in local config) | Paths to Whiz/Phizz source repos for code analysis |
-| `jira.cloudId` | `technine.atlassian.net` | Jira site (auto-resolved to UUID at runtime) |
+| `productCode.rootPaths` | `[]` (set in local config) | Paths to your product source repos for code analysis |
+| `jira.cloudId` | `your-org.atlassian.net` | Jira site (auto-resolved to UUID at runtime) |
 
 ### Test Tags
 
@@ -1642,22 +1642,22 @@ cp .claude/project-config.local.example.json .claude/project-config.local.json
 
 **API tests:** `[NN]-[http-method]-[resource-description].cy.js`
 ```
-01-get-contracts-list.cy.js
-03-post-create-contract.cy.js
-04-put-cancel-contract.cy.js
+01-get-orders-list.cy.js
+03-post-create-order.cy.js
+04-put-cancel-order.cy.js
 ```
 
 **UI tests:** `[NN]-[action-description].cy.js`
 ```
 01-login.cy.js
 02-create-new-store.cy.js
-03-view-contract-details.cy.js
+03-view-order-details.cy.js
 ```
 
-**Ticket-branch UI tests:** when the current git branch contains a Jira ticket ID (e.g. `TS-17487_Tax_Overrides`), the spec goes to `cypress/e2e/JiraTicket/TS_<NUMBER>_<FeatureDescription>.cy.js` instead:
+**Ticket-branch UI tests:** when the current git branch contains a Jira ticket ID (e.g. `PROJ-1748_Tax_Overrides`), the spec goes to `cypress/e2e/JiraTicket/<TICKET>_<NUMBER>_<FeatureDescription>.cy.js` instead:
 ```
-TS_17487_OverrideDMSTaxCancellation.cy.js
-TS_14407_EnableCancelButton.cy.js
+PROJ_1748_OverrideTaxCancellation.cy.js
+PROJ_1440_EnableCancelButton.cy.js
 ```
 
 ### Pipeline State
@@ -1708,89 +1708,89 @@ These examples show what the generated files actually look like, so you know wha
 ### Sample: TKT-123-analysis.md (Code Analysis)
 
 ```markdown
-# Code Analysis: TCA-456 - Add ability to manually expire maintenance contracts
+# Code Analysis: PROJ-456 - Add ability to manually expire user subscriptions
 
 ## Affected API Endpoints
 
 | Method | Endpoint | Source File |
 |---|---|---|
-| PUT | /api/contracts/:id/expire | whiz/controllers/contracts.go:245 |
-| GET | /api/contracts | whiz/controllers/contracts.go:38 |
-| GET | /api/contracts/:id | whiz/controllers/contracts.go:95 |
+| PUT | /api/subscriptions/:id/expire | backend/controllers/subscriptions.go:245 |
+| GET | /api/subscriptions | backend/controllers/subscriptions.go:38 |
+| GET | /api/subscriptions/:id | backend/controllers/subscriptions.go:95 |
 
 ## Database Tables
 
 | Table | Relevant Columns |
 |---|---|
-| contracts | id, status, expire_date, expired_by, expire_reason |
-| contract_status_history | contract_id, from_status, to_status, changed_at |
+| subscriptions | id, status, expire_date, expired_by, expire_reason |
+| subscription_status_history | subscription_id, from_status, to_status, changed_at |
 
 ## Available Cypress Test Infrastructure
 
-- **DB Task:** cy.task("queryDb", { sql: "SELECT * FROM contracts WHERE id = $1", params: [contractId] }) — plain-string SQL also accepted; prefer { sql, params } whenever a value is interpolated
+- **DB Task:** cy.task("queryDb", { sql: "SELECT * FROM subscriptions WHERE id = $1", params: [subscriptionId] }) — plain-string SQL also accepted; prefer { sql, params } whenever a value is interpolated
 - **Login Command:** cy.loginAndGetSessionCookie()
-- **Existing Specs:** cypress/e2e/API/contracts-module/ (4 files)
-- **Page Objects:** cypress/e2e/pages/ContractsPage.js
+- **Existing Specs:** cypress/e2e/API/subscriptions-module/ (4 files)
+- **Page Objects:** cypress/e2e/pages/SubscriptionsPage.js
 
 ## Requirements vs Code Comparison
 
 | # | Requirement (from Jira) | Code Status | Details |
 |---|---|---|---|
-| 1 | PUT /expire sets status to "Manually Expired" | ✅ Implemented | contracts.go:260 sets status |
-| 2 | Only "Active" contracts can be expired | ✅ Implemented | contracts.go:250 checks status |
-| 3 | Expire button disabled for non-Asbury stores | ⚠️ Partial | Controller has no store check |
+| 1 | PUT /expire sets status to "Manually Expired" | ✅ Implemented | subscriptions.go:260 sets status |
+| 2 | Only "Active" subscriptions can be expired | ✅ Implemented | subscriptions.go:250 checks status |
+| 3 | Expire button disabled for annual plans | ⚠️ Partial | Controller has no plan-type check |
 | 4 | Activity log records the expiration | ❌ Not implemented | No audit trail code found |
-| 5 | Contract list filters by expired status | 🔍 Undocumented | Filter exists but not in ticket |
+| 5 | Subscription list filters by expired status | 🔍 Undocumented | Filter exists but not in ticket |
 ```
 
 ### Sample: TKT-123.md (Manual Test Cases)
 
 ```markdown
-# Test Cases: TCA-456 - Add ability to manually expire maintenance contracts
+# Test Cases: PROJ-456 - Add ability to manually expire user subscriptions
 
 ## Ticket Summary
-Story to add a "Manually Expire" action for active maintenance contracts.
+Story to add a "Manually Expire" action for active user subscriptions.
 
 ## Module / Feature
-contracts-module
+subscriptions-module
 
 ## Preconditions
 - User is logged in with valid credentials
-- At least one active maintenance contract exists in the system
+- At least one active subscription exists in the system
 
 ## Test Cases
 
-### Contract Expiration API
+### Subscription Expiration API
 
 - **Type:** API
-1. Verify that PUT /api/contracts/:id/expire returns 200 and sets status to "Manually Expired"
-2. Verify that PUT /api/contracts/:id/expire returns 400 when contract is already expired
-3. Verify that PUT /api/contracts/:id/expire returns 404 for non-existent contract ID
-4. Verify that PUT /api/contracts/:id/expire returns 401 without authentication
+1. Verify that PUT /api/subscriptions/:id/expire returns 200 and sets status to "Manually Expired"
+2. Verify that PUT /api/subscriptions/:id/expire returns 400 when subscription is already expired
+3. Verify that PUT /api/subscriptions/:id/expire returns 404 for non-existent subscription ID
+4. Verify that PUT /api/subscriptions/:id/expire returns 401 without authentication
 
-### Contract Expiration UI
+### Subscription Expiration UI
 
 - **Type:** UI
-5. Verify that the Expire button appears on active contract detail page
+5. Verify that the Expire button appears on active subscription detail page
 6. Verify that clicking Expire shows a confirmation dialog with reason field
-7. Verify that the Expire button is disabled for already-expired contracts
+7. Verify that the Expire button is disabled for already-expired subscriptions
 
 ### Data Persistence
 
 - **Type:** Mixed
-8. Verify that after expiring a contract, refreshing the page still shows "Manually Expired"
-9. Verify that contract_status_history table has a new row after expiration
+8. Verify that after expiring a subscription, refreshing the page still shows "Manually Expired"
+9. Verify that subscription_status_history table has a new row after expiration
 ```
 
 ### Sample: TKT-123-test-keys.json (Jira Issue Ledger)
 
 ```json
 {
-  "parentTicket": "TCA-456",
+  "parentTicket": "PROJ-456",
   "tests": [
-    { "number": 1, "jiraKey": "TCA-501", "summary": "Verify that PUT /api/contracts/:id/expire returns 200...", "type": "API", "linked": true },
-    { "number": 2, "jiraKey": "TCA-502", "summary": "Verify that PUT /api/contracts/:id/expire returns 400...", "type": "API", "linked": true },
-    { "number": 3, "jiraKey": "TCA-503", "summary": "Verify that PUT /api/contracts/:id/expire returns 404...", "type": "API", "linked": true }
+    { "number": 1, "jiraKey": "PROJ-501", "summary": "Verify that PUT /api/subscriptions/:id/expire returns 200...", "type": "API", "linked": true },
+    { "number": 2, "jiraKey": "PROJ-502", "summary": "Verify that PUT /api/subscriptions/:id/expire returns 400...", "type": "API", "linked": true },
+    { "number": 3, "jiraKey": "PROJ-503", "summary": "Verify that PUT /api/subscriptions/:id/expire returns 404...", "type": "API", "linked": true }
   ],
   "linkFailures": []
 }
@@ -1830,7 +1830,7 @@ rm docs/.ticket-context/TKT-123-pipeline-state.json
 
 ### "Which swagger is it reading?"
 
-- Skills read both `cypress/fixtures/swagger.json` (Whiz) and `cypress/fixtures/phizz-swagger.json` (Phizz)
+- Skills read both `cypress/fixtures/swagger.json` (primary app) and `cypress/fixtures/secondary-swagger.json` (secondary app, if configured)
 - They detect which one to use based on the test file location or endpoint URL
 
 ### Running in different environments

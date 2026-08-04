@@ -15,10 +15,10 @@ Every step uses these — never hardcode paths, Jira config, or auth details.
 
 ## Ticket ID Gate
 
-The user will provide a Jira ticket ID (e.g. `TCA-1234`) in their message.
+The user will provide a Jira ticket ID (e.g. `PROJ-1234`) in their message.
 
 **If the user's message does not contain a Jira ticket ID matching `[A-Z]+-[0-9]+`, ask them:**
-> "Please provide a Jira ticket ID to generate manual tests for (e.g. `TCA-1234`)"
+> "Please provide a Jira ticket ID to generate manual tests for (e.g. `PROJ-1234`)"
 
 **Wait for their response before proceeding.**
 
@@ -28,10 +28,10 @@ Record it as `TICKET_ID`.
 
 Parse the user's message for optional flags after the ticket ID:
 
-- **`force`** (case-insensitive) — e.g. `TCA-1234 force` → set `FORCE_MODE = true` (default: `false`)
-- **`pr:<number>`** — e.g. `TCA-1234 pr:42` → set `PR_FLAG = "pr:42"` (default: `null`). This is passed to the `/analyze-code` step to scope the source code scan to only files changed in that PR.
+- **`force`** (case-insensitive) — e.g. `PROJ-1234 force` → set `FORCE_MODE = true` (default: `false`)
+- **`pr:<number>`** — e.g. `PROJ-1234 pr:42` → set `PR_FLAG = "pr:42"` (default: `null`). This is passed to the `/analyze-code` step to scope the source code scan to only files changed in that PR.
 
-Flags can be combined: `TCA-1234 force pr:42`
+Flags can be combined: `PROJ-1234 force pr:42`
 
 ## Canonical Pipeline State
 
@@ -76,7 +76,7 @@ Read and execute `.claude/commands/fetch-ticket.md` with `TICKET_ID`.
 After completion: `echo -e "\033[32m✔ Jira ticket fetched and discussion extracted\033[0m"`
 
 ### Step 2: Analyze Codebase
-Read and execute `.claude/commands/analyze-code.md` with `TICKET_ID` + `PR_FLAG` (if set). For example, if `PR_FLAG = "pr:42"`, pass `$ARGUMENTS = "TCA-1234 pr:42"` to the command. If `PR_FLAG` is null, pass only `TICKET_ID`.
+Read and execute `.claude/commands/analyze-code.md` with `TICKET_ID` + `PR_FLAG` (if set). For example, if `PR_FLAG = "pr:42"`, pass `$ARGUMENTS = "PROJ-1234 pr:42"` to the command. If `PR_FLAG` is null, pass only `TICKET_ID`.
 
 **Important:** Do **not** run this in parallel with Step 1 — `analyze-code` requires the ticket JSON produced by `fetch-ticket`.
 

@@ -1,4 +1,4 @@
-# TCA QA Issue Taxonomy
+# QA Issue Taxonomy
 
 Reference for classifying every issue found during a `/qa` or `/qa-only` run.
 Always assign both a **severity** and a **category** to every issue.
@@ -23,7 +23,7 @@ A feature is broken with no workaround, or a major test coverage gap that hides 
 Examples:
 - GET /api/contracts/{id} returns 404 for a valid contract ID
 - Unauthenticated request returns 200 instead of 401 (auth bypass)
-- An entire module (e.g. `lca-module`) has zero test files — blind spot in CI
+- An entire module (e.g. `payments-module`) has zero test files — blind spot in CI
 - CSRF token not sent on PUT request — all cancellation writes silently rejected
 
 ### Medium
@@ -110,7 +110,7 @@ Endpoints or scenarios that have no test coverage at all.
 
 | Sub-type | Example |
 |---|---|
-| Module not started | `lca-module` has no folder in `cypress/e2e/API/` |
+| Module not started | `payments-module` has no folder in `cypress/e2e/API/` |
 | Endpoint missing | GET `/api/contracts/{id}` exists in swagger but no test file |
 | Negative not covered | POST test exists but no missing-required-field test |
 | Auth not covered | Module has happy-path tests but no unauthenticated test |

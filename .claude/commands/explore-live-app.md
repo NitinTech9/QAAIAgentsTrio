@@ -32,20 +32,20 @@ Also read `{config.paths.ticketContext}/TICKET_ID.json` (ticket context) and `TI
 ## Environment check
 
 Confirm the browser MCP (`claude-in-chrome`) is available and the app is up:
-- `curl -s -o /dev/null -w "%{http_code}" {config.app.whizBaseUrl}{config.app.loginPath}` should be 2xx/3xx. If the app is down, stop and tell the user to start it.
+- `curl -s -o /dev/null -w "%{http_code}" {config.app.primaryBaseUrl}{config.app.loginPath}` should be 2xx/3xx. If the app is down, stop and tell the user to start it.
 - If the `mcp__claude-in-chrome__*` tools are not available, stop and tell the user to connect the browser MCP.
 
 ## Browser & Login (Option A — auto-detect session; NEVER type the password)
 
-1. Open the app: `tabs_context_mcp` (with `createIfEmpty: true`). **If more than one Chrome is connected** (a multi-browser error listing devices is returned), show the list and ask the user which to use, then `select_browser` with that deviceId — never guess. Then `navigate` to `{config.app.whizBaseUrl}` and confirm it actually rendered (screenshot / `read_page`, not an error page). If the chosen browser can't reach the app (e.g. a remote device with no `localhost` access), stop and ask for one that can.
+1. Open the app: `tabs_context_mcp` (with `createIfEmpty: true`). **If more than one Chrome is connected** (a multi-browser error listing devices is returned), show the list and ask the user which to use, then `select_browser` with that deviceId — never guess. Then `navigate` to `{config.app.primaryBaseUrl}` and confirm it actually rendered (screenshot / `read_page`, not an error page). If the chosen browser can't reach the app (e.g. a remote device with no `localhost` access), stop and ask for one that can.
 2. **Auto-detect:** navigate to the home route and check the URL. If it did NOT redirect to the login path, print `✔ Browser already authenticated` and continue.
 3. **If not authenticated:** read the email from `{config.app.envFile}` (`{config.app.emailKey}`), fill ONLY the email field, then use `AskUserQuestion` to ask the user to type their password and click Login, then confirm. Re-check the URL left the login path. **Do not type or read the password.**
 
 ## Test-Data Discovery (DB-driven, done BEFORE clicking)
 
-The flow needs concrete, precondition-satisfying data. Query the DB — **prefer the postgres MCP** (`mcp__postgres__query`) when it is connected, else a small Node script reusing the Cypress DB client under `{config.paths.tasks}` (the same `queryDb`/`queryPhizzDb` clients the suite uses); only fall back to `psql` via Bash if neither is available. Read creds from `{config.app.envFile}` (Whiz `DB_*`, Phizz `PHIZZ_DB_*`):
+The flow needs concrete, precondition-satisfying data. Query the DB — **prefer the postgres MCP** (`mcp__postgres__query`) when it is connected, else a small Node script reusing the Cypress DB client under `{config.paths.tasks}` (the same `queryDb`/`querySecondaryDb` clients the suite uses); only fall back to `psql` via Bash if neither is available. Read creds from `{config.app.envFile}` (primary `DB_*`, secondary `SECONDARY_DB_*` if any):
 
-1. Translate every precondition in the manual cases into a query (status, product type, coupon/visit counts, no-existing-claims, single-vs-multi related records, store, state, expiry). Cross-DB preconditions (e.g. Whiz contract + Phizz claim count) are checked with two queries and correlated.
+1. Translate every precondition in the manual cases into a query (status, product type, related-record counts, single-vs-multi related records, store, state, expiry). Cross-DB preconditions (e.g. a primary-DB record + a related count in the secondary DB) are checked with two queries and correlated.
 2. **Prefer the simplest, most-abundant eligible record** and note pool size. Call out **destructive/stateful** flows (a run that mutates the record) — those must pick a *fresh* record each run; **read-only** flows may reuse.
 3. Watch for query-shape traps on large tables (e.g. use `NOT EXISTS` instead of `COUNT(*)=N` when it would scan millions of rows / time out; lean on indexed columns).
 4. Record the final query and the chosen sample (ids/codes/values) in the exploration notes.
@@ -72,7 +72,7 @@ Save `{config.paths.ticketContext}/TICKET_ID-exploration.md`:
 # TICKET_ID — Live-App Exploration Notes
 
 ## Environment
-- App: <whiz/phizz base URLs>, session: <auto-detected | user-logged-in>
+- App: <primary/secondary base URLs>, session: <auto-detected | user-logged-in>
 - Explored: <ISO date>
 
 ## Test Data (DB-driven)

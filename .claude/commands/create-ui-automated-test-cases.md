@@ -66,7 +66,7 @@ Consolidate related manual cases into flowing `it()` blocks — do NOT mechanica
 - **Bug tickets** (`issuetype = Bug`): target `{config.testLimits.bugMaxTests}` automated tests
   - Test 1: reproduce the bug in the browser and verify the fix
   - Test 2 (optional): regression flow
-- **Story tickets** (`issuetype = Story`): target `{config.testLimits.storyMaxTests}` automated tests **per spec file**. When the manual cases span distinct layers (e.g. element visibility vs calculation results) or distinct screens, create MULTIPLE spec files for the ticket rather than skipping cases — e.g. `TS_<N>_<Feature>.cy.js` (visibility/interaction), `TS_<N>_<Feature>Estimates.cy.js` (API-level results), `TS_<N>_<Feature>EstimatesUI.cy.js` (same results through the screen). See the `TS_17487_OverrideDMSTax*` trio as the reference.
+- **Story tickets** (`issuetype = Story`): target `{config.testLimits.storyMaxTests}` automated tests **per spec file**. When the manual cases span distinct layers (e.g. element visibility vs calculation results) or distinct screens, create MULTIPLE spec files for the ticket rather than skipping cases — e.g. `<TICKET>_<N>_<Feature>.cy.js` (visibility/interaction), `<TICKET>_<N>_<Feature>Estimates.cy.js` (API-level results), `<TICKET>_<N>_<Feature>EstimatesUI.cy.js` (same results through the screen). Use an existing multi-spec ticket in `{config.paths.jiraTicketTests}` as the reference.
 
 Only skip a manual TC when it is genuinely not automatable in this environment — and then **print a warning** naming it and why.
 
@@ -80,16 +80,16 @@ Apply this section ONLY when the code analysis (`TICKET_ID-analysis.md` → "Rol
 
 - **Authorized role sees it** (checkbox/button/route present, interactive)
 - **Unauthorized role does NOT** (element absent, or route Forbidden)
-- Repeat on **every screen** the element appears on (e.g. TS-17487: Admin cancel view AND Cancellation Dashboard).
+- Repeat on **every screen** the element appears on (e.g. both the admin edit view AND the dashboard that surfaces the same field).
 
-Users for every role shape are auto-provisioned by the global `cy.ensureQaUsers()` prerequisite (`cypress/support/e2e.js` → `cypress/tasks/ensureQaUsers.js`): primary (`LOGIN_EMAIL`), controller-admin, dealer, base-rep (`NEGATIVE_LOGIN_EMAIL`), manager-only, no-account-rep. All log in with `LOGIN_PASSWORD`. If the ticket needs a role shape that doesn't exist yet, ADD a spec to `userSpecs` in `ensureQaUsers.js` (clone-minus-roles or exact-roles) instead of mutating users inside the test.
+Users for every role shape are auto-provisioned by the global `cy.ensureQaUsers()` prerequisite (`cypress/support/e2e.js` → `cypress/tasks/ensureQaUsers.js`): primary (`LOGIN_EMAIL`), a restricted user (`NEGATIVE_LOGIN_EMAIL`), plus whatever role shapes your product defines. All log in with `LOGIN_PASSWORD`. If the ticket needs a role shape that doesn't exist yet, ADD a spec to `userSpecs` in `ensureQaUsers.js` (clone-minus-roles or exact-roles) instead of mutating users inside the test.
 
 ## Deterministic Test Data (DB-driven, with fallback)
 
 Never depend on "whatever the page happens to show". Pick data in `before()` with `cy.task("queryDb", ...)` using filters that encode every precondition the flow needs (status, product type, sale type, payment type, store/state, expiration). Two resilience patterns:
 
-1. **Candidate fallback ("use another data")**: select the top 3–5 candidates, then PROBE each via the relevant API (`cy.api` with the session cookie) until one satisfies the test's runtime preconditions (e.g. cancellable estimate with a non-zero refund). Log skipped candidates. See `pickWorkingContract` in `TS_17487_OverrideDMSTaxEstimatesUI.cy.js`.
-2. **Environment-gated skips**: when behavior depends on an external system (DMS/CDK lookup, Okta) or on data that may not exist in every env (special company config), PROBE availability in `before()` and gate with `function () { if (!available) this.skip(); }` (function-style `it`, not arrow). The test then activates automatically on staging/uat. Never write a pass-either-way assertion instead.
+1. **Candidate fallback ("use another data")**: select the top 3–5 candidates, then PROBE each via the relevant API (`cy.api` with the session cookie) until one satisfies the test's runtime preconditions (e.g. a cancellable record with a non-zero refund). Log skipped candidates — keep a `pickWorking<Resource>` helper pattern, as in existing JiraTicket specs.
+2. **Environment-gated skips**: when behavior depends on an external system (a third-party integration, SSO) or on data that may not exist in every env (special company config), PROBE availability in `before()` and gate with `function () { if (!available) this.skip(); }` (function-style `it`, not arrow). The test then activates automatically on staging/uat. Never write a pass-either-way assertion instead.
 
 ## Quality Bar (simple, house-style, must catch bugs)
 
@@ -101,17 +101,17 @@ Never depend on "whatever the page happens to show". Pick data in `before()` wit
 
 ## UI Interaction Techniques (React app)
 
-- **Controlled inputs that reset state on every keystroke** (react-datepicker fields, tax/amount fields wired to quote-reset handlers): `clear().type()` fires intermediate `onChange(null/partial)` — the app answers with error toasts and re-renders that swallow keystrokes. Set the value in ONE shot: native value setter + `dispatchEvent(new win.Event("input", { bubbles: true }))`. See `setCancelDate` / `setManualTaxRate` in `AdminCancellationPage.js`.
-- **Stepping-stone assertions**: before asserting an element is absent, assert a sibling landmark IS present (e.g. the Tax Rate field before "checkbox not.exist") so "page never loaded" and "element visibility wrong" fail differently.
-- **Known app modals/toasts**: handle conditionally (e.g. the "Confirm Cancel Date Old" 90-day modal — `#confirm-modal-ok`). Put the handling in the Page Object, not the spec.
+- **Controlled inputs that reset state on every keystroke** (react-datepicker fields, tax/amount fields wired to quote-reset handlers): `clear().type()` fires intermediate `onChange(null/partial)` — the app answers with error toasts and re-renders that swallow keystrokes. Set the value in ONE shot: native value setter + `dispatchEvent(new win.Event("input", { bubbles: true }))` — keep the one-shot setter helper in the relevant Page Object.
+- **Stepping-stone assertions**: before asserting an element is absent, assert a sibling landmark IS present (e.g. a neighboring field before "checkbox not.exist") so "page never loaded" and "element visibility wrong" fail differently.
+- **Known app modals/toasts**: handle conditionally (e.g. a confirmation modal — `#confirm-modal-ok`). Put the handling in the Page Object, not the spec.
 
 ## Spec File Placement & Naming
 
 **First check the current git branch** (`git branch --show-current`):
 
-- **If the branch name contains a Jira ticket ID** (`[A-Z]+-[0-9]+`, e.g. `TS-17487_Tax_Overrides`): place the spec in the JiraTicket folder, named after the ticket:
+- **If the branch name contains a Jira ticket ID** (`[A-Z]+-[0-9]+`, e.g. `PROJ-17487_Tax_Overrides`): place the spec in the JiraTicket folder, named after the ticket:
   ```
-  {config.paths.jiraTicketTests}/TS_<NUMBER>_<FeatureDescription>.cy.js
+  {config.paths.jiraTicketTests}/<TICKET>_<NUMBER>_<FeatureDescription>.cy.js
   ```
   (underscored ticket ID prefix — match the existing files in that folder.)
 - **Otherwise**: do NOT name the spec after a ticket ID. Name it after the **action or feature** in its module folder:
@@ -142,9 +142,9 @@ describe("Test Scenario: TICKET_ID — <Feature Name>", () => {
 
 ## UI Test Template
 
-**Reference implementations — read these before writing a spec** (they encode all the patterns above and are the house standard):
-- `cypress/e2e/JiraTicket/TS_17487_OverrideDMSTaxCancellation.cy.js` — journey helpers, role matrix on two screens, DB-driven data, direct-URL entry for role-blocked flows
-- `cypress/e2e/JiraTicket/TS_17487_OverrideDMSTaxEstimatesUI.cy.js` — candidate probing/fallback, env-gated skips, quote-table assertions
+**Reference implementations — read 1–2 recent specs in `{config.paths.jiraTicketTests}` before writing a spec** (they encode all the patterns above and are the house standard). Look for examples of:
+- journey helpers, role matrix across screens, DB-driven data, direct-URL entry for role-blocked flows
+- candidate probing/fallback, env-gated skips, computed-value table assertions
 
 Skeleton:
 
@@ -189,7 +189,7 @@ describe("Test Scenario: TICKET_ID — <Feature Name>", () => {
 
 ### Page Object Template (create if missing)
 
-Follow the house POM style (see `AdminCancellationPage.js`): class on line 1, `// ── Section ──` dividers (`Page Structure`, `Actions`, `Assertions`, `Navigation`), getters returning `cy` chains with explicit timeouts, absence-assertions with a stepping stone, `export default new <ModuleName>Page()`.
+Follow the house POM style (mirror an existing Page Object in `{config.paths.pages}`): class on line 1, `// ── Section ──` dividers (`Page Structure`, `Actions`, `Assertions`, `Navigation`), getters returning `cy` chains with explicit timeouts, absence-assertions with a stepping stone, `export default new <ModuleName>Page()`.
 
 ```javascript
 class <ModuleName>Page {

@@ -36,13 +36,13 @@ For **every endpoint the functional spec automates that returns a 200 JSON body*
 `CONTRIBUTING/testing-standards/feedback_schema_validation.md`:
 
 1. **Capture the real 200 response** for the endpoint (reuse the spec's auth/IDs — same
-   `cy.loginAndGetSessionCookie()` / Phizz login, same resource lookups).
+   `cy.loginAndGetSessionCookie()` or the secondary app's login command, same resource lookups).
 2. **Write a hand-style draft-07 schema** to `cypress/fixtures/schemas/<name>.schema.json`
    (`$schema`, `title`, `required`, `properties`, `additionalProperties: true`; null-safe types —
    use `["string", "null"]` for nullable fields). **Reuse** an existing schema fixture if one already
    covers the endpoint — do not duplicate.
 3. **Write one file per endpoint** at
-   `cypress/e2e/API/schema-validation/<whiz|phizz>/NN-<name>-schema.cy.js` — continue the existing
+   `cypress/e2e/API/schema-validation/<primary|secondary>/NN-<name>-schema.cy.js` — continue the existing
    numbered sequence in that folder, 4-space indent — asserting:
    ```javascript
    cy.fixture("schemas/<name>.schema.json").then((schema) => {
@@ -51,8 +51,8 @@ For **every endpoint the functional spec automates that returns a 200 JSON body*
    ```
 4. **Skip only non-JSON responses** (PDF / CSV / 307 download) — note the reason in the spec.
 
-Each schema spec must pass before moving on (run it with the Node-20 guard —
-`fnm use 20 && unset ELECTRON_RUN_AS_NODE && npx cypress run --spec "<file>"`).
+Each schema spec must pass before moving on (run it with `config.runCommand.headless`,
+which carries any env prefix your machine needs — e.g. `npx cypress run --spec "<file>"`).
 
 ## Update Pipeline State
 

@@ -80,6 +80,7 @@ Replace with your app's authentication mechanism:
 - **Cookie-based auth**: Keep the structure above, update the command name
 - **Bearer token auth**: Change `loginCommand` to whatever custom command generates a token, update aliases
 - **No auth**: Set `loginCommand` to `null` -- the agents will skip auth setup in generated specs
+- **Two backends**: the config also has `auth.primary` / `auth.secondary` blocks (and `app.primaryBaseUrl` / `app.secondaryBaseUrl`). Fill in `secondary` only if your suite tests a second backend; leave it `null` otherwise.
 
 ### 2d. Test Limits
 
@@ -225,12 +226,12 @@ From Claude Code CLI:
 ```bash
 # From within the QA repo
 claude
-> /manual-test-generator TS-12345
+> /manual-test-generator PROJ-12345
 
 # From a different directory
-claude --directory /path/to/TCARegressionSuite-QA
-> /manual-test-generator TS-12345
+claude --directory /path/to/your-qa-repo
+> /manual-test-generator PROJ-12345
 ```
 
 From VS Code (Claude Code extension):
-- Open the command palette and type the agent name, or type `/manual-test-generator TS-12345` in the chat.
+- Open the command palette and type the agent name, or type `/manual-test-generator PROJ-12345` in the chat.

@@ -80,14 +80,14 @@ Pick the template from `project.runCommand`:
 
 Substitute `{specFile}` → `SPEC_FILE` and `{env}` → `ENV`.
 
-The `runCommand.*` templates carry the required `fnm use 20 && unset ELECTRON_RUN_AS_NODE` prefix — Cypress fails to bootstrap under the harness default (Node 18 + `ELECTRON_RUN_AS_NODE=1`). Do not strip it.
+The `runCommand.*` templates carry any environment prefix the machine needs (e.g. a Node version manager, unsetting `ELECTRON_RUN_AS_NODE` — Cypress fails to bootstrap with it set, and the Claude Code harness sets it by default). Do not strip the prefix if the config has one.
 
 ## Preflight (before running — abort fast on a bad environment)
 
 A Cypress bootstrap crash looks like a test failure but cannot be fixed by editing selectors, so verify the environment BEFORE the run and the retry loop:
 
-1. **Node / env guard** — confirm `fnm use 20` resolves Node ≥ 20 and `ELECTRON_RUN_AS_NODE` is unset for the run shell (the template handles this; if `fnm` is unavailable, stop with: *"Node 20 via fnm is required — see CLAUDE.md 'Running tests'."*).
-2. **Backend up** — `curl -s -o /dev/null -w "%{http_code}"` the base URL for the platform under test (Whiz `:4000` / Phizz `:3000`); if not 2xx/3xx, stop and tell the user to start the backend.
+1. **Node / env guard** — confirm the Node version your suite requires is active and `ELECTRON_RUN_AS_NODE` is unset for the run shell (Cypress fails to bootstrap with it set; `config.runCommand` carries any env prefix your machine needs).
+2. **Backend up** — `curl -s -o /dev/null -w "%{http_code}"` the base URL for the platform under test (`config.app.primaryBaseUrl` / `secondaryBaseUrl`); if not 2xx/3xx, stop and tell the user to start the backend.
 3. Optionally run `npm run doctor` (the `doctor` skill) for a full check (DB connectivity, env keys). If any hard check fails, stop with the remediation rather than entering the retry loop.
 
 ## Execute Tests
@@ -103,7 +103,7 @@ Run via Bash with `timeout` of `TIMEOUT_MS / 1000` seconds (use the Bash `timeou
 5. **CSRF token issues** — verify the CSRF token header is passed on mutation requests, re-run
 6. **DB setup issues** — verify `cy.task("queryDb", ...)` returns data, check the query; if the picked record fails a runtime precondition, pick ANOTHER candidate (tighten the query filters or add candidate-probing fallback), re-run
 7. **Timing issues** — add `cy.wait()` or increase `defaultCommandTimeout` in `cypress.config.js`, re-run
-8. **Typed value lost / value stays "0" on a controlled React input** — replace `clear().type()` with the one-shot native setter + `input` event pattern (see `setCancelDate` in `AdminCancellationPage.js`), re-run
+8. **Typed value lost / value stays "0" on a controlled React input** — replace `clear().type()` with the one-shot native setter + `input` event pattern (keep the setter helper in the relevant Page Object), re-run
 9. **Unexpected app modal/toast blocking the flow** (e.g. "Confirm Cancel Date Old") — handle it conditionally in the Page Object, re-run
 10. **Re-validate any spec you edited during a retry** — before re-running, re-check the modified spec against the no-5xx / no-ambiguous-`oneOf` / DB-assertion-on-mutation rules (per `validate-spec.md`). An auto-fix must never reintroduce a banned assertion that already passed validation, or "make it green" by weakening a status assertion.
 11. After 3 failed retries, proceed with the failure details — do not retry further. If the failure is a genuine app defect (not a test/selector/env issue), say so explicitly in the results rather than masking it — never soften an assertion to force a pass.

@@ -61,7 +61,7 @@ Before writing any `it()` block, read the knowledge base and let it shape the sp
 `cypress/knowledge/_README.md` → "Protocol for agents & skills"). For each endpoint you are about to
 automate:
 
-1. **`cypress/knowledge/api-behavior-notes.json`** — check `known_500_bugs_phizz`, `endpoint_quirks`,
+1. **`cypress/knowledge/api-behavior-notes.json`** — check `known_500_bugs`, `endpoint_quirks`,
    and `auth_behavior`. If an endpoint is a **documented 5xx bug**, do NOT write a test that expects
    200, and NEVER accept the 5xx in the assertion (per the no-5xx rule) — instead assert the
    documented current behavior or note it as a known app-bug to be re-enabled when fixed. Apply known
@@ -213,7 +213,7 @@ Distinguish **required** from **environment-dependent** data so a data-poor loca
 If while generating you discovered anything new about an endpoint, write it back **in this same
 change** (per `cypress/knowledge/_README.md`):
 - A new quirk / non-obvious behavior / real 5xx → `api-behavior-notes.json`
-  (`endpoint_quirks` or `known_500_bugs_phizz`).
+  (`endpoint_quirks` or `known_500_bugs`).
 - A module's tables / cleanup order / auth role / data source not already mapped →
   `api-dependency-map.json`.
 - The new spec's endpoint→file mapping → `api-catalog.json`.
