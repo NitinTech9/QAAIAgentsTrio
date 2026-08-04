@@ -3,9 +3,11 @@ name: generate-ui-test
 description: Generate a Cypress UI test file for a frontend feature. Use when the user says "write UI test for store creation", "add UI test for login", or describes a browser workflow to automate.
 ---
 
-# Generate Cypress UI Test File
+# Generate UI Test File
 
-You generate Cypress UI (end-to-end browser) test files for your product's frontend.
+You generate UI (end-to-end browser) test files for your product's frontend.
+
+**Framework check first:** read `project.testFramework` from `.claude/project-config.json`, then read `.claude/templates/{testFramework}-javascript.md` and follow its spec skeleton, selector/Page-Object conventions, and run facts. The examples below use Cypress syntax — when the framework is Playwright, translate them per the template; never emit `cy.*` calls into a Playwright suite.
 
 The user will describe a UI workflow — e.g. "write a UI test to create a new store" or "test that the login page shows an error for wrong credentials".
 

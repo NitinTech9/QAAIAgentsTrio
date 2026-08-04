@@ -1,0 +1,123 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "QA agents framework project config",
+  "description": "Schema for .claude/project-config.json. Referenced via the config's $schema key so editors validate and autocomplete it; /doctor and /qa-help check the same rules.",
+  "type": "object",
+  "required": ["project"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "project": {
+      "type": "object",
+      "required": ["name", "testFramework", "paths", "auth", "app", "runCommand"],
+      "additionalProperties": true,
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "testFramework": { "enum": ["cypress", "playwright"] },
+        "dbVerification": {
+          "type": "boolean",
+          "description": "false = suite has no direct DB access; DB-assertion-on-mutation checks are skipped (degraded standard)",
+          "default": true
+        },
+        "jira": {
+          "type": "object",
+          "properties": {
+            "cloudId": { "type": "string" },
+            "testIssueType": { "type": "string" },
+            "issueLinkType": { "type": "string" },
+            "batchSize": { "type": "integer", "minimum": 1 },
+            "testAssigneeAccountId": { "type": ["string", "null"] }
+          }
+        },
+        "paths": {
+          "type": "object",
+          "required": ["ticketContext", "manualCases", "apiTests", "uiTests", "pages", "support", "fixtures", "reports"],
+          "properties": {
+            "ticketContext": { "type": "string" },
+            "manualCases": { "type": "string" },
+            "apiTests": { "type": "string" },
+            "uiTests": { "type": "string" },
+            "jiraTicketTests": { "type": ["string", "null"] },
+            "pages": { "type": "string" },
+            "support": { "type": "string" },
+            "dataFactory": { "type": ["string", "null"] },
+            "tasks": { "type": ["string", "null"] },
+            "fixtures": { "type": "string" },
+            "knowledge": { "type": ["string", "null"] },
+            "swaggerPrimary": { "type": ["string", "null"] },
+            "swaggerSecondary": { "type": ["string", "null"] },
+            "namingConventions": { "type": ["string", "null"] },
+            "logs": { "type": ["string", "null"] },
+            "reports": { "type": "string" },
+            "screenshots": { "type": ["string", "null"] }
+          }
+        },
+        "auth": {
+          "type": "object",
+          "properties": {
+            "primary": { "$ref": "#/definitions/authBlock" },
+            "secondary": { "anyOf": [{ "$ref": "#/definitions/authBlock" }, { "type": "null" }] },
+            "loginCommand": { "type": ["string", "null"] },
+            "sessionCookieAlias": { "type": ["string", "null"] },
+            "csrfTokenAlias": { "type": ["string", "null"] }
+          }
+        },
+        "app": {
+          "type": "object",
+          "required": ["primaryBaseUrl", "envFile"],
+          "properties": {
+            "primaryBaseUrl": { "type": "string", "pattern": "^https?://" },
+            "secondaryBaseUrl": { "anyOf": [{ "type": "string", "pattern": "^https?://" }, { "type": "null" }] },
+            "loginPath": { "type": ["string", "null"] },
+            "envFile": { "type": "string" },
+            "emailKey": { "type": ["string", "null"] },
+            "passwordKey": { "type": ["string", "null"] }
+          }
+        },
+        "testLimits": {
+          "type": "object",
+          "properties": {
+            "bugMaxTests": { "type": "integer", "minimum": 1 },
+            "storyMaxTests": { "type": "integer", "minimum": 1 }
+          }
+        },
+        "runCommand": {
+          "type": "object",
+          "required": ["headless"],
+          "properties": {
+            "headed": { "type": "string" },
+            "headless": { "type": "string", "pattern": "\\{specFile\\}" },
+            "withEnv": { "type": "string" }
+          }
+        },
+        "runTimeoutMs": { "type": "integer", "minimum": 1000 },
+        "productCode": {
+          "type": "object",
+          "properties": {
+            "rootPaths": { "type": "array", "items": { "type": "string" } },
+            "sourceGlobs": { "type": "array", "items": { "type": "string" } },
+            "excludeDirs": { "type": "array", "items": { "type": "string" } }
+          }
+        },
+        "postman": {
+          "type": "object",
+          "properties": {
+            "collectionsPath": { "type": "string" },
+            "authType": { "enum": ["cookie", "bearer", "none"] },
+            "loginEndpoint": { "type": ["string", "null"] },
+            "csrfEndpoint": { "type": ["string", "null"] }
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "authBlock": {
+      "type": "object",
+      "properties": {
+        "loginCommand": { "type": ["string", "null"] },
+        "sessionCookieAlias": { "type": ["string", "null"] },
+        "csrfTokenAlias": { "type": ["string", "null"] }
+      }
+    }
+  }
+}

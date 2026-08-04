@@ -26,8 +26,11 @@ Parse the user's message for optional flags after the ticket ID:
 
 - **`force`** (case-insensitive) — e.g. `PROJ-1234 force` → set `FORCE_MODE = true` (default: `false`). Resets all pipeline steps for this agent to `pending`.
 - **`pr:<number>`** — e.g. `PROJ-1234 pr:42` → set `PR_FLAG = "pr:42"` (default: `null`). Passed to `/analyze-code` to scope source scan to PR-changed files.
+- **`auto`** — non-interactive mode (CI / scheduled runs): never prompt. A missing/invalid ticket ID is a hard error instead of a question. Step 4's approval gate is skipped and tests run with defaults (headless, local). The Jira results comment is **skipped** unless `auto-post` is also given — save the results summary to `{config.paths.ticketContext}/TICKET_ID-run-results.md` instead.
+- **`auto-post`** — only meaningful with `auto`: also post the results comment to Jira.
+- **`force-lock`** — override a fresh `api` run lock (see Run Lock below). Use only when a previous run is known dead.
 
-Flags can be combined: `PROJ-1234 force pr:42`
+Flags can be combined: `PROJ-1234 force pr:42 auto`
 
 ## Manual Test Cases Hard Gate
 
@@ -71,9 +74,9 @@ Always **merge** — preserve any existing keys (e.g. `create-manual-test-cases`
 
 For every step below, **skip any that already show `done`**, announcing: `✔ [Step Name] already completed — skipping`.
 
-## Concurrency Warning
+## Run Lock & Atomic Writes (enforced)
 
-Do not run this agent in parallel with `ui-automation-test-generator` for the same ticket — they share this state file and concurrent writes corrupt it. Run sequentially.
+Follow the canonical **Atomic State Writes** and **Run Lock** protocol in `manual-test-generator.md`. Your lock domain is **`api`**: acquire it before Step 1 (stop if another `api` run holds a fresh lock — override only if stale >60 min or the user passed `force-lock`), refresh `lockedAt` on every step write, release (`{"locks":{"api":null}}`) on the final write — including early stops. Every state write goes through the atomic temp→rename snippet. Running in parallel with `ui-automation-test-generator` for the same ticket is safe — the domains are independent and writes are atomic.
 
 ## Self-Heal Prerequisites
 
@@ -127,6 +130,8 @@ Pipeline key: `validate-api-spec`
 
 ### Step 4: Run API Tests — Human Approval Gate
 This step owns the single approval gate. `run-tests.md` has its own gate too, so once the user approves here, invoke it with the `auto` token appended so it does NOT prompt a second time (avoids a double approval).
+
+**Auto mode:** with `auto`, skip the prompt below and run with defaults (`headless`, `local`) immediately; honor `staging`/`uat`/`headed` if they were in the invocation. Otherwise:
 
 **This step has a human approval gate.** Before running, ask the user:
 

@@ -13,9 +13,12 @@ This repo is an extraction of the `.claude` setup from a production Cypress regr
     api-automation-test-generator.md # manual cases -> Cypress API specs
     ui-automation-test-generator.md  # manual cases -> Cypress UI specs (explores the live app)
     postman-collection-generator.md  # manual cases -> Postman collection
-  commands/                        # 16 reusable pipeline steps (/fetch-ticket, /analyze-code,
+  commands/                        # reusable pipeline steps (/fetch-ticket, /analyze-code,
                                    #   /explore-live-app, /validate-spec, /run-tests,
-                                   #   /post-tests-to-jira, /pr, ...)
+                                   #   /post-tests-to-jira, /pr, ...) plus /qa-init —
+                                   #   interactive first-time project scaffolding
+  templates/                       # per-framework fact sheets (cypress-javascript.md,
+                                   #   playwright-javascript.md) the generators follow
   skills/                          # local skills, no Jira needed:
                                    #   /qa, /qa-only, /fix-test, /generate-api-test,
                                    #   /generate-ui-test, /add-test-cases, /audit-coverage, /doctor
@@ -30,8 +33,16 @@ AI-AUTOMATION-GUIDE.md   # full reference for the agent pipeline and commands
 
 ## Getting started (for a new team)
 
+**Just want to see it work?** Run `/qa-init demo` in a scratch repo — it sets up a sandbox against a public API (no backend, no Jira, no credentials) with a pre-seeded demo ticket, so you can watch the full pipeline run in ~10 minutes.
+
+**Starting from scratch (no test suite yet)?** Copy the `.claude/` folder into an empty repo and run `/qa-init` — it interviews you (Cypress+JavaScript or Playwright+JavaScript, one or two backends, DB, Jira), scaffolds the full folder structure and config files, and writes all the paths/run-commands into `.claude/project-config.json` automatically. Then skip to step 5.
+
+**Lost at any point?** Run `/qa-help` — it inspects your actual setup state (config, scaffold, env file, MCP connections, per-ticket pipeline progress) and prints a personalized "here's your next step" checklist.
+
+**Adapting an existing test suite:**
+
 1. **Copy the `.claude/` folder** into the root of your test automation repo (or fork this repo as your starting point).
-2. **Read [HOW-TO-ADAPT.md](HOW-TO-ADAPT.md)** and edit `.claude/project-config.json` — Jira cloud ID, test framework paths, auth commands, run commands, etc. This is the only file that *must* change.
+2. **Read [HOW-TO-ADAPT.md](HOW-TO-ADAPT.md)** and edit `.claude/project-config.json` — Jira cloud ID, test framework paths, auth commands, run commands, etc. This is the only file that *must* change. (`/qa-init` can do this for you too — it detects an existing suite and offers a "sync config only" mode that derives the paths from your real layout.)
 3. **Review `.claude/settings.json`** — the `deny` rules and `additionalDirectories` contain placeholder paths; replace them with paths to *your* product-code repos (or remove them).
 4. **Adapt `CLAUDE.md`** to describe your own repo (the included one is a template — fill in the `<placeholders>`).
 5. **Connect MCP servers** in Claude Code:
@@ -39,11 +50,15 @@ AI-AUTOMATION-GUIDE.md   # full reference for the agent pipeline and commands
    - **Browser MCP (`claude-in-chrome`)** — required by `@ui-automation-test-generator` / `/explore-live-app`.
 6. Run the pipeline: `@manual-test-generator <TICKET-ID>` first, then the API/UI/Postman generators (they depend on manual test cases existing on the ticket).
 
+## CI
+
+Copy `ci/qa-pr-gate.example.yml` to `.github/workflows/` in your QA repo for a ready-made PR gate (runs the `@PR`-tagged tests, uploads the report). For unattended agent runs, every agent accepts `auto` (non-interactive — no prompts; Jira posting skipped, drafts saved locally) and `auto-post` (with `auto`: allow the Jira writes).
+
 ## Notes
 
 - `.claude/project-config.local.json` is git-ignored by design — machine-local paths and overrides go there, never in the shared config.
 - No credentials live anywhere in this repo; tests read them from your project's git-ignored env file (e.g. `cypress.env.json`).
-- The setup was built around Cypress, but the agents/commands read paths and run commands from `project-config.json`, so other frameworks can be wired in.
+- Two frameworks are supported out of the box, selected at `/qa-init` time or via `project.testFramework`: **Cypress + JavaScript** and **Playwright + JavaScript**. The generation/validation commands read the matching fact sheet in `.claude/templates/` for syntax, globs, and report parsing. Cypress is the most battle-tested path; other frameworks can be added by writing a new template file.
 
 ## Questions
 

@@ -1,0 +1,59 @@
+# Example GitHub Actions PR gate for a QA suite built on this framework.
+#
+# Copy to .github/workflows/qa-pr-gate.yml in your QA repo and adjust:
+#   1. How the backend under test is started (or point at a persistent env).
+#   2. The QA_ENV_JSON secret — the full contents of your git-ignored env file
+#      (cypress.env.json for Cypress, .env for Playwright).
+#   3. The framework-specific lines, marked "Cypress:" / "Playwright:".
+#
+# The gate runs only @PR-tagged tests — the same set `npm run cy:pr` / `pw:pr`
+# runs locally, per the framework's tagging strategy.
+
+name: QA PR Gate
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  qa-pr-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      # Playwright only — browsers are not cached in the repo:
+      # - run: npx playwright install --with-deps chromium
+
+      # --- Backend under test -------------------------------------------------
+      # Pick ONE strategy:
+      #   a) Start it here (e.g. docker compose):
+      # - run: docker compose up -d backend && ./scripts/wait-for-backend.sh
+      #   b) Test a persistent environment instead of localhost:
+      #      Cypress:    add CYPRESS_ENV=staging to the run step below
+      #      Playwright: add TEST_ENV=staging to the run step below
+      # ------------------------------------------------------------------------
+
+      - name: Write env file from secret
+        run: echo "$QA_ENV_JSON" > cypress.env.json   # Playwright: > .env
+        env:
+          QA_ENV_JSON: ${{ secrets.QA_ENV_JSON }}
+
+      - name: Run @PR-tagged tests
+        run: npm run cy:pr                            # Playwright: npm run pw:pr
+
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: qa-report
+          path: cypress/reports                       # Playwright: playwright-report
+          retention-days: 14

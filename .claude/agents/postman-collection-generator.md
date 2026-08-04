@@ -31,8 +31,11 @@ Parse the user's message for optional flags after the ticket ID:
 
 - **`force`** (case-insensitive) — e.g. `PROJ-1234 force` → set `FORCE_MODE = true` (default: `false`). Resets the `generate-postman-collection` step to `pending`.
 - **`pr:<number>`** — e.g. `PROJ-1234 pr:42` → set `PR_FLAG = "pr:42"` (default: `null`). Passed to `/analyze-code` to scope source scan to PR-changed files.
+- **`auto`** — non-interactive mode: never prompt. A missing/invalid ticket ID is a hard error instead of a question. The Human Review Gate is skipped (the collection is saved as generated) and the Jira comment is **skipped** unless `auto-post` is also given.
+- **`auto-post`** — only meaningful with `auto`: also post the Jira comment without the review pause.
+- **`force-lock`** — override a fresh `postman` run lock (see Run lock below). Use only when a previous run is known dead.
 
-Flags can be combined: `PROJ-1234 force pr:42`
+Flags can be combined: `PROJ-1234 force pr:42 auto`
 
 ## Canonical Pipeline State
 
@@ -51,6 +54,8 @@ Read `{config.paths.ticketContext}/TICKET_ID-pipeline-state.json` (canonical sha
 ```
 
 Always **merge** — preserve keys written by other agents.
+
+**Run lock & atomic writes:** follow the canonical **Atomic State Writes** and **Run Lock** protocol in `manual-test-generator.md`. Your lock domain is **`postman`**: acquire before the first step (stop if another `postman` run holds a fresh lock — override only if stale >60 min or the user passed `force-lock`), refresh on each step write, release (`{"locks":{"postman":null}}`) on the final write. Every state write goes through the atomic temp→rename snippet.
 
 **If `FORCE_MODE = true`:** reset `generate-postman-collection` step to `"pending"`. Do NOT reset steps owned by other agents. Announce: `🔄 Force mode — Postman collection step reset to pending`.
 
@@ -78,6 +83,8 @@ Pipeline key: `generate-postman-collection`
 
 ## Human Review Gate
 
+**Auto mode:** with `auto`, skip this gate — save the file as generated, print the summary table, and continue (to Jira only if `auto-post`). Otherwise:
+
 After the collection is generated, present a summary to the user:
 
 ```
@@ -98,7 +105,7 @@ Total: X requests across Y folders
 Ask:
 > **Collection ready for review.**
 > - Type `yes` or `done` to finalize and optionally post to Jira
-> - Type `add <description>` to add a missing request (e.g. `add DELETE /api/contracts/:id`)
+> - Type `add <description>` to add a missing request (e.g. `add DELETE /api/orders/:id`)
 > - Type `remove <request name>` to remove a request
 > - Type `skip jira` to save the file without posting a Jira comment
 

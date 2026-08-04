@@ -2,6 +2,8 @@
 
 This guide explains how to take the QA agents framework in this repo and adapt it to a different product or team. The framework is project-agnostic by design -- all project-specific values live in `.claude/project-config.json`.
 
+> **Shortcut:** `/qa-init` automates most of this guide. It walks you through framework choice (Cypress+JavaScript or Playwright+JavaScript), scaffolds the folder structure and config files for a brand-new project (or syncs config from an existing suite), and fills in `project-config.json` for you. Use the steps below when you want to understand or hand-tune what it writes.
+
 ---
 
 ## Step 1 -- Clone or Fork This Repo

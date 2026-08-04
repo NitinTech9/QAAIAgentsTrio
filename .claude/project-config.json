@@ -1,6 +1,8 @@
 {
+  "$schema": "schemas/project-config.schema.json",
   "project": {
     "name": "YourProject",
+    "dbVerification": true,
     "jira": {
       "cloudId": "your-org.atlassian.net",
       "testIssueType": "Test",
@@ -20,6 +22,7 @@
       "dataFactory": "cypress/support/dataFactory.js",
       "tasks": "cypress/tasks",
       "fixtures": "cypress/fixtures",
+      "knowledge": "cypress/knowledge",
       "swaggerPrimary": "cypress/fixtures/swagger.json",
       "swaggerSecondary": null,
       "namingConventions": null,
