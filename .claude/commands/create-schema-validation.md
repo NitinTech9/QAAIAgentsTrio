@@ -17,7 +17,9 @@ It is invoked by `api-automation-test-generator.md` (Step 2), by `create-api-aut
 ## Setup: Read Project Config
 
 Read `.claude/project-config.json` and extract all values. Then read `.claude/project-config.local.json`
-if it exists — merge its values over the base config (local takes precedence). Extract `project.paths.*`.
+if it exists — merge its values over the base config (local takes precedence).
+
+**Framework template:** read `.claude/templates/{config.testFramework}-javascript.md` and follow its spec skeleton, assertion style, run/report facts, and validation rules. Inline examples in this file use Cypress syntax — when `config.testFramework` is not `cypress`, translate them per the template file; never emit `cy.*` calls into a non-Cypress suite. Extract `project.paths.*`.
 
 ## Check Pipeline State
 
@@ -26,7 +28,7 @@ If `steps["create-schema-validation"]` is `done`, print `✔ Schema validation a
 
 ## Find the API Spec
 
-Use the **Grep** tool with `pattern: TICKET_ID`, `glob: *.cy.js`, scoped to `{config.paths.apiTests}`
+Use the **Grep** tool with `pattern: TICKET_ID`, `glob: *.cy.js` (Cypress) or `*.spec.js` (Playwright — per the framework template), scoped to `{config.paths.apiTests}`
 and `{config.paths.jiraTicketTests}`. This is the functional spec whose endpoints need schema coverage.
 If none is found, there is nothing to do — print `⚠️ No API spec found for TICKET_ID — run /create-api-automated-test-cases first` and exit.
 

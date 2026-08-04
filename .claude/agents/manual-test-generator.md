@@ -30,8 +30,11 @@ Parse the user's message for optional flags after the ticket ID:
 
 - **`force`** (case-insensitive) — e.g. `PROJ-1234 force` → set `FORCE_MODE = true` (default: `false`)
 - **`pr:<number>`** — e.g. `PROJ-1234 pr:42` → set `PR_FLAG = "pr:42"` (default: `null`). This is passed to the `/analyze-code` step to scope the source code scan to only files changed in that PR.
+- **`auto`** — non-interactive mode (CI / scheduled runs): never prompt. A missing/invalid ticket ID is a hard error instead of a question. The Step 4 review gate is skipped — and since posting to Jira unreviewed is not safe by default, the Jira posting itself is **skipped** too: write the would-be test cases table to `{config.paths.ticketContext}/TICKET_ID-jira-draft.md` and say so in the final output.
+- **`auto-post`** — only meaningful with `auto`: additionally allow Step 4 to create the Jira Test issues without a review pause (idempotency ledger still applies).
+- **`force-lock`** — override a fresh same-domain run lock (see Run Lock below). Use only when a previous run is known dead.
 
-Flags can be combined: `PROJ-1234 force pr:42`
+Flags can be combined: `PROJ-1234 force pr:42 auto`
 
 ## Canonical Pipeline State
 
@@ -53,11 +56,43 @@ Check if the file exists.
     "create-manual-test-cases": "pending",
     "post-tests-to-jira": "pending"
   },
+  "locks": {},
   "lastUpdated": "<ISO timestamp>"
 }
 ```
 
 Always **merge** — preserve any additional keys written by the automation agents (e.g. `create-api-automated-test-cases`, `create-schema-validation`, `validate-api-spec`, `run-api-tests`, `explore-live-app`, `create-ui-automated-test-cases`, `validate-ui-spec`, `run-ui-tests`).
+
+## Atomic State Writes (canonical — ALL agents use this for EVERY state write)
+
+Never Write/Edit the state file directly — a crash mid-write leaves corrupt JSON, and a plain read-modify-write can clobber a concurrently running agent's keys. Every state update goes through this one Bash snippet, which re-reads the file fresh, merges only the keys you pass, then writes a temp file and renames it (rename is atomic):
+
+```bash
+node -e '
+const fs=require("fs"),p=process.argv[1],updates=JSON.parse(process.argv[2]);
+let s={};try{s=JSON.parse(fs.readFileSync(p,"utf8"))}catch(e){}
+for(const [k,v] of Object.entries(updates)){
+  s[k]=(v&&typeof v==="object"&&!Array.isArray(v))?{...s[k],...v}:v;
+}
+if(s.locks)for(const d of Object.keys(s.locks))if(s.locks[d]===null)delete s.locks[d];
+s.lastUpdated=new Date().toISOString();
+const t=p+".tmp."+process.pid;fs.writeFileSync(t,JSON.stringify(s,null,2));fs.renameSync(t,p);
+' "<STATE_FILE>" '<UPDATES_JSON>'
+```
+
+`<UPDATES_JSON>` examples: mark a step done → `{"steps":{"fetch-ticket":"done"}}`; take a lock → `{"locks":{"manual":{"lockedBy":"manual-test-generator","lockedByUser":"<user>","lockedAt":"<ISO>"}}}`; release → `{"locks":{"manual":null}}`.
+
+## Run Lock (enforced — replaces the old "don't run in parallel" warnings)
+
+Each agent owns one lock **domain** in `locks`: `manual` (this agent), `api`, `ui`, `postman`. Domains are independent — API and UI automation for the same ticket MAY run in parallel; two runs in the **same** domain may not.
+
+1. **Acquire (before any step, right after the state file is read/created):** if `locks[<domain>]` exists, is not yours, and `lockedAt` is **less than 60 minutes old** → stop:
+   > "⛔ TICKET_ID is locked by <lockedBy> (started <lockedAt> by <lockedByUser>). If that run is dead, re-run with `force-lock`."
+   If the lock is **older than 60 minutes**, announce `⚠️ Stale lock from <lockedBy> (<lockedAt>) — overriding` and take it. Then write your lock via the atomic snippet, with `lockedBy` = your agent name and `lockedByUser` = `git config user.name || whoami` (auto-captured — never ask the user for an ID).
+2. **Refresh:** every step-completion write also rewrites your lock with a fresh `lockedAt` (include both in one `<UPDATES_JSON>`), so a healthy long run never looks stale.
+3. **Release:** the final state write of the run sets `{"locks":{"<domain>":null}}` — including when the run ends early on a gate/stop (release before stopping).
+4. **`force-lock` flag** (all agents): override a fresh same-domain lock — only when the user explicitly passes it.
+5. **FORCE_MODE guard (this agent only):** because this agent's `force` resets ALL steps (by design), it must not run while any OTHER domain holds a fresh lock — if one exists, stop and name it instead of resetting.
 
 ## How You Work
 
@@ -94,6 +129,8 @@ Read and execute `.claude/commands/post-tests-to-jira.md` with `TICKET_ID`.
 
 **This step has a human review gate.** Present the test cases table to the user and wait for their approval before creating any Jira issues. The user may `remove`, `update`, or `add` test cases — handle all feedback before proceeding. Issue creation is incremental and idempotent via `{config.paths.ticketContext}/TICKET_ID-test-keys.json`.
 
+**Auto mode:** with `auto` alone, skip this step — write the table to `TICKET_ID-jira-draft.md` instead and mark the step `skipped (auto)` in state. With `auto auto-post`, post directly without the review pause.
+
 After completion: `echo -e "\033[32m✔ Manual test cases posted to Jira\033[0m"`
 
 ## Final Output
@@ -106,6 +143,4 @@ After all steps complete, provide a summary:
 5. File paths created
 6. Any open questions or ambiguities
 
-> **Next step:** To generate automated tests for this ticket, run `@api-automation-test-generator TICKET_ID` or `@ui-automation-test-generator TICKET_ID`.
->
-> **Caution:** Run API and UI automation agents **sequentially**, not in parallel — they share the same pipeline state file and concurrent writes will corrupt state.
+> **Next step:** To generate automated tests for this ticket, run `@api-automation-test-generator TICKET_ID` or `@ui-automation-test-generator TICKET_ID` — they use separate lock domains, so running both in parallel for the same ticket is safe.

@@ -13,7 +13,9 @@ Derive:
 
 ## Setup: Read Project Config
 
-Read `.claude/project-config.json` and extract all values. Then read `.claude/project-config.local.json` if it exists — merge its values over the base config (local takes precedence). Extract `project.paths.*`.
+Read `.claude/project-config.json` and extract all values. Then read `.claude/project-config.local.json` if it exists — merge its values over the base config (local takes precedence).
+
+**Framework template:** read `.claude/templates/{config.testFramework}-javascript.md` and follow its spec skeleton, assertion style, run/report facts, and validation rules. Inline examples in this file use Cypress syntax — when `config.testFramework` is not `cypress`, translate them per the template file; never emit `cy.*` calls into a non-Cypress suite. Extract `project.paths.*`.
 
 ## Check Pipeline State
 
@@ -27,14 +29,14 @@ Constrain search to `SEARCH_ROOT` so the API and UI agents never touch each othe
 **Step 1** — Use the **Grep** tool (not bash `grep`):
 - `pattern`: `TICKET_ID`
 - `path`: `SEARCH_ROOT`
-- `glob`: `*.cy.js`
+- `glob`: `*.cy.js` (Cypress) or `*.spec.js` (Playwright — per the framework template)
 
 **Step 2** — If no match: read `{config.paths.ticketContext}/TICKET_ID.json`, extract 2–3 keywords from the summary, and Grep for those:
 - `pattern`: `<keyword1>|<keyword2>`
 - `path`: `SEARCH_ROOT`
-- `glob`: `*.cy.js`
+- `glob`: `*.cy.js` (Cypress) or `*.spec.js` (Playwright — per the framework template)
 
-**Step 3** — If still no match: use **Glob** with `{SEARCH_ROOT}/**/*.cy.js` sorted by mtime, show the 5 most recent, and ask the user:
+**Step 3** — If still no match: use **Glob** with `{SEARCH_ROOT}/**/*.cy.js (or *.spec.js per the framework template)` sorted by mtime, show the 5 most recent, and ask the user:
 > "I couldn't automatically find the `SPEC_TYPE` spec file for TICKET_ID. Here are the most recently modified spec files — which one should I validate?"
 
 Do not proceed until a single spec file is confirmed. Record its absolute path as `SPEC_FILE`.
@@ -127,6 +129,8 @@ Per `feedback_schema_validation.md`, every automated endpoint that returns a 200
 - **Report:** list any 200-JSON endpoint with no schema counterpart. **Auto-remediate** by reading and executing `.claude/commands/create-schema-validation.md` with `$ARGUMENTS = TICKET_ID` to generate the missing schema fixture + per-endpoint spec; if it can't be generated (non-JSON 307/PDF/CSV, or no data), note the reason instead. Skip endpoints whose response is non-JSON.
 
 ### Check 11: DB Assertion on Every Mutation (API only) — HARD GATE
+**Skip this check entirely when `config.dbVerification === false`** (the suite has no direct DB access, e.g. demo mode) — note `⚠ DB verification disabled in config — persistence not proven` in the report instead of failing.
+
 Per `CONTRIBUTING/testing-standards/feedback_db_assertions.md`, a `POST`/`PUT`/`PATCH`/`DELETE`
 `cy.api()` that **successfully mutates state** must be backed by a DB assertion (`cy.task("queryDb", …)` /
 `cy.task("querySecondaryDb", …)`) proving the change persisted (or the row is gone, for DELETE). A spec that

@@ -29,8 +29,11 @@ Parse the user's message for optional flags after the ticket ID:
 - **`force`** (case-insensitive) — e.g. `PROJ-1234 force` → set `FORCE_MODE = true` (default: `false`). Resets all UI automation pipeline steps to `pending`.
 - **`pr:<number>`** — e.g. `PROJ-1234 pr:42` → set `PR_FLAG = "pr:42"` (default: `null`). Passed to `/analyze-code` to scope source scan to PR-changed files.
 - **Run flags** (Step 3 runs automatically; these change how): `headed` (visible browser after a green headless run), `staging` / `uat` (non-local environment), `skip-run` (generate + validate only, do not execute).
+- **`auto`** — non-interactive mode (CI / scheduled runs): never prompt. A missing/invalid ticket ID is a hard error instead of a question. Browser gates become hard failures instead of pauses: multiple Chromes connected → stop with the device list; no authenticated session and none can be established without a password pause → stop with "log in to the app in the connected browser, then re-run". The Jira results comment is **skipped** unless `auto-post` is also given — save the summary to `{config.paths.ticketContext}/TICKET_ID-run-results.md` instead.
+- **`auto-post`** — only meaningful with `auto`: also post the results comment to Jira.
+- **`force-lock`** — override a fresh `ui` run lock (see Run Lock below). Use only when a previous run is known dead.
 
-Flags can be combined: `PROJ-1234 force pr:42 headed`
+Flags can be combined: `PROJ-1234 force pr:42 headed auto`
 
 ## Manual Test Cases Hard Gate
 
@@ -82,9 +85,9 @@ Always **merge** — preserve existing keys.
 
 For every step, **skip any that already show `done`**.
 
-## Concurrency Warning
+## Run Lock & Atomic Writes (enforced)
 
-Do not run this agent in parallel with `api-automation-test-generator` for the same ticket — they share this state file.
+Follow the canonical **Atomic State Writes** and **Run Lock** protocol in `manual-test-generator.md`. Your lock domain is **`ui`**: acquire it before Step 1 (stop if another `ui` run holds a fresh lock — override only if stale >60 min or the user passed `force-lock`), refresh `lockedAt` on every step write, release (`{"locks":{"ui":null}}`) on the final write — including early stops. Every state write goes through the atomic temp→rename snippet. Running in parallel with `api-automation-test-generator` for the same ticket is safe — the domains are independent and writes are atomic.
 
 ## Self-Heal Prerequisites
 

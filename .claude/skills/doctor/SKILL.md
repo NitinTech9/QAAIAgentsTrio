@@ -8,11 +8,24 @@ description: Local environment preflight for the Cypress suite. Use when the use
 Run a one-shot preflight that surfaces the blockers which repeatedly cost time before a Cypress
 run, then interpret the result for the user.
 
+## Check the config first (Check 0)
+
+Before the environment checks, validate `.claude/project-config.json` itself — a broken or half-filled config produces confusing agent failures that look like environment issues:
+
+1. **Parses:** `node -e "JSON.parse(require('fs').readFileSync('.claude/project-config.json','utf8'))"`.
+2. **Shape:** required keys present per `.claude/schemas/project-config.schema.json` — `project.name`, `testFramework` (`cypress`|`playwright`), `paths.{apiTests,uiTests,pages,support,fixtures,reports}`, `app.primaryBaseUrl`, `runCommand.headless` containing `{specFile}`. (Check structurally with an inline `node -e` script — do not assume `ajv` is installed.)
+3. **Placeholders:** warn on `"YourProject"`, `"your-org.atlassian.net"`, empty `productCode.rootPaths` with no `project-config.local.json`, and `/absolute/path/to/your/...` in `.claude/settings.json`.
+4. **Consistency:** `testFramework` matches the `paths` layout (e.g. `playwright` + `cypress/...` paths = mismatch → suggest `/qa-init` sync mode), and `.claude/templates/{testFramework}-javascript.md` exists.
+
+Any Check-0 failure: report it with the exact fix and note that the environment checks below may be unreliable until config is fixed.
+
 ## Run it
 
 ```bash
 bash scripts/qa-doctor.sh
 ```
+
+If `scripts/qa-doctor.sh` does not exist in this repo, do not fail — perform the same checks directly with individual commands (`node --version`, `env | grep ELECTRON_RUN_AS_NODE`, `curl` the base URLs from config, check the env file exists, a `SELECT 1` per DB if `config.dbVerification` is not false).
 
 This checks, in order:
 1. **Node version** — Cypress bootstrap fails on Node < 20 in this repo (the `tsx --loader` blocker).

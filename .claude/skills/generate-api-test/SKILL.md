@@ -3,9 +3,11 @@ name: generate-api-test
 description: Generate a complete Cypress API test file from a GitHub PR number, a curl command, or a plain endpoint description. Use when the user provides a PR like "#21", pastes a curl, or says "write tests for GET /api/stores".
 ---
 
-# Generate Cypress API Test File
+# Generate API Test File
 
-You generate production-ready Cypress API test files for this QA framework.
+You generate production-ready API test files for this QA framework.
+
+**Framework check first:** read `project.testFramework` from `.claude/project-config.json`, then read `.claude/templates/{testFramework}-javascript.md` and follow its spec skeleton, assertion style, and validation rules. The examples below use Cypress syntax — when the framework is Playwright, translate them per the template; never emit `cy.*` calls into a Playwright suite.
 
 The user provides ONE of:
 - A **GitHub PR number / URL** → fetch API changes from the diff

@@ -67,7 +67,7 @@ Full conventions live in `CONTRIBUTING/testing-standards/` — read the relevant
 - `cypress/e2e/JiraTicket/` — regression specs linked to specific Jira bugs.
 - `cypress/fixtures/` — request bodies, `swagger.json` (primary) / `secondary-swagger.json` (secondary) (used by `/audit-coverage`), `schemas/`.
 - Environment selected via `CYPRESS_ENV` (local/staging/uat), mapped to baseUrl in `cypress.config.js`. Failed tests retry once.
-- `docs/.ticket-context/` — Jira agent pipeline state per ticket (`docs/` is git-ignored). Delete `<ticket>-pipeline-state.json` or append `force` to re-run a stuck agent pipeline.
+- `docs/.ticket-context/` — Jira agent pipeline state per ticket (`docs/` is git-ignored). Delete `<ticket>-pipeline-state.json` or append `force` to re-run a stuck agent pipeline; append `force-lock` if a dead run left a fresh run lock behind. State writes are atomic (temp→rename) with per-agent lock domains, so API and UI automation can safely run in parallel on the same ticket.
 
 ## Knowledge base — read before, write after
 
@@ -79,7 +79,11 @@ Full conventions live in `CONTRIBUTING/testing-standards/` — read the relevant
 
 ## AI skills and Jira agents
 
-Local skills (no Jira needed): `/qa` (run + fix + report), `/qa-only` (read-only), `/fix-test`, `/generate-api-test`, `/generate-ui-test`, `/add-test-cases`, `/audit-coverage`, `/doctor`.
+Local skills (no Jira needed): `/qa-init` (first-time project scaffolding — Cypress+JS or Playwright+JS, chosen at runtime; `/qa-init demo` for a no-backend sandbox), `/qa-help` (setup-state checker — "what do I do next?"), `/qa` (run + fix + report), `/qa-only` (read-only), `/fix-test`, `/generate-api-test`, `/generate-ui-test`, `/add-test-cases`, `/audit-coverage`, `/doctor`.
+
+All four agents accept `auto` (non-interactive: no prompts, Jira posting skipped) and `auto-post` (with `auto`: allow the Jira writes) for CI/scheduled runs — see `ci/qa-pr-gate.example.yml` for a GitHub Actions PR gate. `.claude/project-config.json` is validated against `.claude/schemas/project-config.schema.json` (editors pick it up via the config's `$schema` key; `/doctor` Check 0 enforces it).
+
+The test framework is set in `.claude/project-config.json` (`testFramework`), and each framework's syntax/conventions live in `.claude/templates/<framework>-javascript.md` — generation and validation commands follow the template for the configured framework.
 
 Jira agent pipeline (requires Atlassian MCP): run `@manual-test-generator PROJ-XXXX` **first** — the `@api-automation-test-generator`, `@ui-automation-test-generator`, and `@postman-collection-generator` agents depend on manual test cases existing on the ticket. `@ui-automation-test-generator` additionally **explores the live app in a browser** (`/explore-live-app`) to capture verified selectors, DOM/async behavior, exact error text, and DB test data before writing the spec — so it needs the **browser MCP (`claude-in-chrome`) connected and the app running**. It uses Option-A auth: auto-detects an existing browser session, and only if none is live pauses for you to log in (it never types your password; the generated specs still log in programmatically). Individual pipeline steps (`/fetch-ticket`, `/analyze-code`, `/explore-live-app`, `/validate-spec`, `/run-tests`, `/post-tests-to-jira`, …) are in `.claude/commands/`. See `AI-AUTOMATION-GUIDE.md` for details.
 

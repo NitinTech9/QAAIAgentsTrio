@@ -3,9 +3,11 @@ name: fix-test
 description: Diagnose and fix a failing Cypress test. Use when the user pastes a test error, a failing test case, or says "this test is failing" / "fix this test".
 ---
 
-# Fix a Failing Cypress Test
+# Fix a Failing Test
 
-You diagnose why a Cypress test is failing and apply the minimal fix needed.
+You diagnose why a test is failing and apply the minimal fix needed.
+
+**Framework check first:** read `project.testFramework` from `.claude/project-config.json` and the matching `.claude/templates/{testFramework}-javascript.md`. The error table and fix examples below use Cypress syntax — for Playwright, the equivalents are in the template (e.g. `queryDb(...)` imported from `tests/support/db.js` instead of `cy.task("queryDb", ...)`).
 
 The user will provide EITHER:
 - A **Cypress error message** (paste from terminal or runner)
