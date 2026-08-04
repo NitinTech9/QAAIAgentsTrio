@@ -1,0 +1,168 @@
+---
+name: generate-ui-test
+description: Generate a Cypress UI test file for a TCA frontend feature. Use when the user says "write UI test for store creation", "add UI test for login", or describes a browser workflow to automate.
+---
+
+# Generate Cypress UI Test File
+
+You generate Cypress UI (end-to-end browser) test files for the TCA platform frontend.
+
+The user will describe a UI workflow — e.g. "write a UI test to create a new store" or "test that the login page shows an error for wrong credentials".
+
+---
+
+## FRAMEWORK FACTS
+
+**Base URL:** `http://localhost:4000` (from `cypress.config.js`)
+
+**Custom commands available:**
+- `cy.loginAndGetSessionCookie()` — API-based login, sets `@sessionCookie` + `@csrfToken` aliases
+
+**Page Object files** (in `cypress/e2e/pages/`, organized by domain folder):
+- Root: `AdminDashboardPage.js`, `AdminNavPage.js`
+- `auth/` — `LoginPage.js`
+- `store/` — `NavbarPage.js`, `NewSalePage.js`, `RecentSalesPage.js`, `RemitPage.js`, `ResourcesPage.js`, `StoreReportsPage.js`, `MonthlyReportPage.js`, and more
+- `claims/` — `PhizzContractsPage.js`, `PhizzContractDetailPage.js`
+- `lca/` — `WipClaimsPage.js`, `InvoicesPage.js`, `ClaimPaymentHistoryPage.js`
+- `admin/<section>/` — one folder per admin menu section (`user-mgmt/`, `product-mgmt/`, `tools/`, `accounting-mgmt/`, `contract-mgmt/`, `internal-resources-mgmt/`, `vehicle-mgmt/`), e.g. `admin/user-mgmt/UsersListPage.js`, `admin/user-mgmt/StoreManagementPage.js`, `admin/product-mgmt/EditFeePage.js`
+
+Discover with Glob `cypress/e2e/pages/**/*.js`; new Page Objects go in the matching domain folder.
+
+**Plugins loaded:** `cypress-xpath`, `cypress-file-upload`, `chai-json-schema`
+
+**Viewport:** 1280×720 (set in `cypress.config.js`)
+
+---
+
+## FOLDER MAPPING (kebab-case — mandatory)
+
+| Feature Area | Folder |
+|---|---|
+| Login, auth flows | `cypress/e2e/UI/login-module/` |
+| Store navigation, browsing | `cypress/e2e/UI/store-module/` |
+| Lender management | `cypress/e2e/UI/user-module/` |
+| Contract creation, expiry | `cypress/e2e/UI/contracts-module/` |
+| Admin — store management | `cypress/e2e/UI/admin-module/store-management/` |
+| Admin — CLP | `cypress/e2e/UI/admin-module/clp/` |
+| Admin — dealer systems | `cypress/e2e/UI/admin-module/dealer-system/` |
+| Admin — accounting fee rules | `cypress/e2e/UI/admin-module/accounting-fee-rules/` |
+| Admin — accounting rules | `cypress/e2e/UI/admin-module/accounting-rule/` |
+
+---
+
+## FILE NAMING
+
+**Branch check first:** if the current git branch name contains a Jira ticket ID (`[A-Z]+-[0-9]+`), place the spec in `cypress/e2e/JiraTicket/TS_<NUMBER>_<FeatureDescription>.cy.js` (e.g. `TS_17487_OverrideDMSTaxCancellation.cy.js`). Otherwise:
+
+`[NN]-[action-description].cy.js`  
+No HTTP method prefix for UI tests. Short verb-noun description, kebab-case.
+
+**Examples:**
+- `01-login.cy.js`
+- `02-create-new-store.cy.js`
+- `03-view-contract-details.cy.js`
+
+---
+
+## STANDARD UI TEST STRUCTURE
+
+```javascript
+describe("Test Scenario: [Feature Name] UI Tests", () => {
+
+    beforeEach(() => {
+        cy.loginAndGetSessionCookie();
+        cy.visit("/");
+    });
+
+    it("Test Case 01: [Happy path description]", { tags: ["@PR", "@Smoke"] }, () => {
+        // Navigate
+        cy.visit("/path/to/page");
+
+        // Interact — selectors verified against the real DOM (id / label text / name)
+        cy.get("#btn-search").click();
+        cy.get('input[name="field"]').type("value");
+
+        // Assert — real app patterns (ids, label text, stable classes); NO data-testid
+        cy.contains(".alert-success", "Saved").should("be.visible");
+        cy.url().should("include", "/expected-path");
+    });
+
+    it("Test Case 02: [Validation scenario]", { tags: ["@Regression"] }, () => {
+        // Test validation / error state
+    });
+});
+```
+
+**Page Object pattern** (preferred when a page object already exists):
+```javascript
+// POMs export a singleton INSTANCE (export default new X()) — import the default and
+// call methods directly. Do NOT `new` it up or use a named import.
+import LoginPage from "../../pages/auth/LoginPage";
+
+// Use page object methods instead of raw selectors
+LoginPage.login(Cypress.env("LOGIN_EMAIL"), Cypress.env("LOGIN_PASSWORD"));
+```
+
+---
+
+## MINIMUM TEST CASES PER WORKFLOW TYPE
+
+**Login flow:**
+1. `@PR @Smoke` — Valid credentials redirect to dashboard
+2. `@PR @Smoke` — Invalid credentials show error message
+3. `@Regression` — Empty fields show validation errors
+
+**Create/Edit form:**
+1. `@PR @Smoke` — Fill all required fields, submit, success message shown
+2. `@Regression` — Required field missing, submit button disabled or error shown
+3. `@Regression` — Created item appears in the list/table
+
+**View/List page:**
+1. `@PR @Smoke` — Page loads, table/list renders with data
+2. `@Regression` — Search or filter works
+3. `@Regression` — Pagination works (if applicable)
+
+**Delete/Deactivate:**
+1. `@PR @Smoke` — Confirm modal shows, item removed after confirmation
+2. `@Regression` — Cancel in modal keeps the item
+
+**Role-gated feature (element/route visible only to certain roles — the EXCEPTION, not the default; most tickets run everything as the primary `LOGIN_EMAIL` user):**
+1. `@PR @Smoke` — Authorized user sees and can interact with the element
+2. `@Regression` — Unauthorized user does NOT see it (element absent or route Forbidden) — a positive-only test can never catch an over-exposure regression
+3. Repeat on EVERY screen the element appears on. Role users are auto-provisioned by the global `cy.ensureQaUsers()` prerequisite (primary, controller-admin, dealer, base-rep, manager-only, no-account-rep — all log in with `LOGIN_PASSWORD`); add a new shape to `cypress/tasks/ensureQaUsers.js` if a test needs one.
+
+---
+
+## DATA & ENVIRONMENT RESILIENCE
+
+- **Deterministic data**: pick test data in `before()` with `cy.task("queryDb", ...)` filters encoding every precondition (status, product/sale/payment type, store/state, expiration). Never rely on "whatever the page shows".
+- **Candidate fallback ("use another data")**: select the top 3–5 candidates and probe each via `cy.api` until one satisfies the runtime preconditions; log skipped candidates (see `pickWorkingContract` in `TS_17487_OverrideDMSTaxEstimatesUI.cy.js`).
+- **Environment-gated skips**: probe external dependencies (DMS/CDK, Okta) or optional data in `before()` and gate with `function () { if (!available) this.skip(); }` — never a pass-either-way assertion.
+- **Controlled React inputs** that reset state per keystroke (datepickers, quote-linked amount fields): set the value in ONE shot via native setter + `dispatchEvent(new win.Event("input", { bubbles: true }))` — `clear().type()` fires intermediate onChange and loses keystrokes (see `setCancelDate` / `setManualTaxRate` in `AdminCancellationPage.js`).
+- **Stepping-stone assertions**: before asserting an element is absent, assert a sibling landmark IS present so "page never loaded" and "visibility wrong" fail differently.
+
+---
+
+## STRICT RULES
+
+- Always `cy.loginAndGetSessionCookie()` in `beforeEach` (not `before`), followed by `cy.visit()` to navigate — or a parameterized journey helper (`goToFeature(loginEmail)`) when tests run the same flow as different role users
+- Prefer selectors verified against the REAL DOM, in this order: **id** (`#btn-search`, `#major-radio`), then **label text** (`cy.contains("label", "RO Number")`), then **`name`**, then a stable **class** (`.badge`, `.s-alert-error`). **This app does NOT use `data-testid` — never assume it.** When unsure, inspect the running app or read the existing Page Object in `cypress/e2e/pages/` instead of guessing; put every selector in a Page Object, never inline in the spec
+- Never use `cy.wait(<number>)` — use `cy.get(...).should("be.visible")` to wait for elements
+- Never use `cy.logger()` — it does not exist; use `cy.log()` only for debug failure output
+- Tags: `{ tags: ["@PR", "@Smoke"] }` on happy path, `{ tags: ["@Regression"] }` on edge/negative cases
+- Pure JavaScript — no TypeScript
+
+---
+
+## OUTPUT FORMAT
+
+After writing files, show:
+
+| File | Action | Test Cases |
+|------|--------|-----------|
+| `cypress/e2e/UI/.../file.cy.js` | Created / Updated | N |
+
+Run command:
+```bash
+npx cypress open --spec "cypress/e2e/UI/<path>/<file>.cy.js" --env CYPRESS_ENV=local
+```

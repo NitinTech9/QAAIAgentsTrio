@@ -1,0 +1,53 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__postgres__query",
+      "Bash(git add *)"
+    ],
+    "deny": [
+      "Read(/Users/nitin.tech9/work/go/src/phizz/config.toml)",
+      "Read(/Users/nitin.tech9/work/go/src/whiz/config.toml)",
+      "Edit(/Users/nitin.tech9/work/go/src/phizz/config.toml)",
+      "Edit(/Users/nitin.tech9/work/go/src/whiz/config.toml)",
+      "Read(/Users/nitin.tech9/work/go/src/phizz/**/.env*)",
+      "Read(/Users/nitin.tech9/work/go/src/whiz/**/.env*)",
+      "Edit(/Users/nitin.tech9/work/go/src/phizz/**/.env*)",
+      "Edit(/Users/nitin.tech9/work/go/src/whiz/**/.env*)",
+      "Read(/Users/nitin.tech9/work/go/src/phizz/**/credentials*)",
+      "Read(/Users/nitin.tech9/work/go/src/whiz/**/credentials*)",
+      "Edit(/Users/nitin.tech9/work/go/src/phizz/**/credentials*)",
+      "Edit(/Users/nitin.tech9/work/go/src/whiz/**/credentials*)",
+      "Read(/Users/nitin.tech9/work/go/src/phizz/**/secrets*)",
+      "Read(/Users/nitin.tech9/work/go/src/whiz/**/secrets*)",
+      "Edit(/Users/nitin.tech9/work/go/src/phizz/**/secrets*)",
+      "Edit(/Users/nitin.tech9/work/go/src/whiz/**/secrets*)"
+    ],
+    "defaultMode": "plan",
+    "additionalDirectories": [
+      "/Users/nitin.tech9/work/go/src/phizz",
+      "/Users/nitin.tech9/work/go/src/whiz"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "FILE_PATH=$(cat | sed -n 's/.*\"file_path\"[[:space:]]*:[[:space:]]*\"\\([^\"]*\\)\".*/\\1/p'); if echo \"$FILE_PATH\" | grep -qE '/\\.env$|\\.env$'; then echo 'BLOCKED: .env contains secrets and must not be edited' >&2; exit 2; fi"
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "CMD=$(cat | sed -n 's/.*\"command\"[[:space:]]*:[[:space:]]*\"\\(.*\\)\"/\\1/p'); if echo \"$CMD\" | grep -qi 'git commit' && echo \"$CMD\" | grep -qi 'co-authored-by'; then echo 'BLOCKED: Co-Authored-By is prohibited' >&2; exit 2; fi; if echo \"$CMD\" | grep -qiE 'git (push\\s+(-f|--force)|reset\\s+--hard|clean\\s+-fd?)'; then echo 'BLOCKED: destructive git command requires manual execution' >&2; exit 2; fi"
+          }
+        ]
+      }
+    ]
+  }
+}

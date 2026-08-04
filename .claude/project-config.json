@@ -1,0 +1,80 @@
+{
+  "project": {
+    "name": "TCA",
+    "jira": {
+      "cloudId": "technine.atlassian.net",
+      "testIssueType": "Test",
+      "issueLinkType": "Test",
+      "batchSize": 8,
+      "testAssigneeAccountId": null
+    },
+    "testFramework": "cypress",
+    "paths": {
+      "ticketContext": "docs/.ticket-context",
+      "manualCases": "docs/test-cases",
+      "apiTests": "cypress/e2e/API",
+      "uiTests": "cypress/e2e/UI",
+      "jiraTicketTests": "cypress/e2e/JiraTicket",
+      "pages": "cypress/e2e/pages",
+      "support": "cypress/support/commands.js",
+      "dataFactory": "cypress/support/dataFactory.js",
+      "tasks": "cypress/tasks",
+      "fixtures": "cypress/fixtures",
+      "swaggerWhiz": "cypress/fixtures/swagger.json",
+      "swaggerPhizz": "cypress/fixtures/phizz-swagger.json",
+      "namingConventions": null,
+      "logs": "cypress/logs",
+      "reports": "cypress/reports",
+      "screenshots": "cypress/screenshots"
+    },
+    "auth": {
+      "whiz": {
+        "loginCommand": "cy.loginAndGetSessionCookie()",
+        "sessionCookieAlias": "@sessionCookie",
+        "csrfTokenAlias": "@csrfToken"
+      },
+      "phizz": {
+        "loginCommand": "cy.loginAndGetPhizzSessionCookie()",
+        "sessionCookieAlias": "@phizzSessionCookie",
+        "csrfTokenAlias": null
+      },
+      "loginCommand": "cy.loginAndGetSessionCookie()",
+      "sessionCookieAlias": "@sessionCookie",
+      "csrfTokenAlias": "@csrfToken"
+    },
+    "app": {
+      "_comment": "Used by explore-live-app.md for browser-driven exploration. baseUrls mirror cypress.config.js environments.local; credentials are read from envFile, never hardcoded.",
+      "whizBaseUrl": "http://localhost:4000",
+      "phizzBaseUrl": "http://localhost:3000",
+      "loginPath": "/login",
+      "envFile": "cypress.env.json",
+      "emailKey": "LOGIN_EMAIL",
+      "passwordKey": "LOGIN_PASSWORD"
+    },
+    "testLimits": {
+      "_comment": "Per SPEC FILE targets — multi-layer tickets get multiple spec files instead of dropped coverage (see create-ui-automated-test-cases.md)",
+      "bugMaxTests": 2,
+      "storyMaxTests": 8
+    },
+    "runCommand": {
+      "_comment": "The `fnm use 20 && unset ELECTRON_RUN_AS_NODE` prefix is REQUIRED: Cypress fails to bootstrap under the harness default (Node 18 + ELECTRON_RUN_AS_NODE=1). Do not remove it. See CLAUDE.md 'Running tests'.",
+      "headed": "fnm use 20 && unset ELECTRON_RUN_AS_NODE && npx cypress run --spec \"{specFile}\" --headed --reporter mochawesome",
+      "headless": "fnm use 20 && unset ELECTRON_RUN_AS_NODE && npx cypress run --spec \"{specFile}\" --reporter mochawesome",
+      "withEnv": "fnm use 20 && unset ELECTRON_RUN_AS_NODE && CYPRESS_ENV={env} npx cypress run --spec \"{specFile}\" --reporter mochawesome"
+    },
+    "runTimeoutMs": 600000,
+    "productCode": {
+      "_comment": "rootPaths MUST be overridden in .claude/project-config.local.json with your local repo paths",
+      "rootPaths": [],
+      "sourceGlobs": ["*.go", "*.js", "*.jsx", "*.ts", "*.tsx", "*.sql"],
+      "excludeDirs": ["node_modules", ".git", "dist", "build", "coverage", "vendor"]
+    },
+    "postman": {
+      "_comment": "Whiz auth is cookie-based: POST /session (sets session cookie), then GET /api/session to read the gorilla CSRF token for mutations. Phizz uses server-to-server /auth + a Phizz-Checksum header (see cypress/support/commands.js).",
+      "collectionsPath": "postman/collections",
+      "authType": "cookie",
+      "loginEndpoint": "/session",
+      "csrfEndpoint": "/api/session"
+    }
+  }
+}

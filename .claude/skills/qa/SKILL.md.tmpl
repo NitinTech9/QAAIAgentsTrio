@@ -1,0 +1,232 @@
+---
+name: {{SKILL_NAME}}
+description: {{SKILL_DESCRIPTION}}
+---
+
+# TCA QA — {{SKILL_TITLE}}
+
+{{SKILL_INTRO}}
+
+---
+
+## FRAMEWORK FACTS
+
+| Item | Value |
+|---|---|
+| Framework | Cypress 15.x |
+| Base URL | `http://localhost:4000` (local) · `CYPRESS_ENV=staging/uat` |
+| Config | `cypress.config.js` |
+| Test root | `cypress/e2e/API/` and `cypress/e2e/UI/` |
+| Reports | `cypress/reports/` |
+| Swagger | `cypress/fixtures/swagger.json` |
+| Issue taxonomy | `.claude/skills/qa/references/issue-taxonomy.md` |
+| Report template | `.claude/skills/qa/templates/qa-report-template.md` |
+| Tags | `@PR` (smoke) · `@Smoke` · `@Regression` |
+| DB | PostgreSQL `whiz` via `cy.task("queryDb", sql)` |
+| Auth | `cy.loginAndGetSessionCookie()` → `@sessionCookie` + `@csrfToken` |
+
+**Known DB facts:**
+- Table: `cancel_reasons` (NOT `cancellation_reasons`)
+- Table: `contracts` columns: `id`, `status`, `store_id` (no `odometer`)
+- Contract statuses: `'Active'`, `'Cancelled'`, `'Voided'`
+- Hardcode `mileage = 50000` for cancellation estimate tests
+
+---
+
+## PRE-FLIGHT
+
+```bash
+# App health check
+curl -s -o /dev/null -w "%{http_code}" http://localhost:4000/api/health
+
+{{PRE_FLIGHT_EXTRA}}
+```
+
+---
+
+## PHASE 1 — INITIALIZE
+
+Start timer. Confirm scope with user if not specified.
+
+Copy report template:
+```bash
+DATE=$(date +%Y-%m-%d)
+cp .claude/skills/qa/templates/qa-report-template.md cypress/reports/qa-report-$DATE.md
+mkdir -p cypress/reports
+```
+
+---
+
+## PHASE 2 — SCAN STRUCTURE
+
+```bash
+find cypress/e2e -name "*.cy.js" | sort
+```
+
+For each file record: module, `it()` count, tags present, has `before()`, has `after()`.
+
+---
+
+## PHASE 3 — {{PHASE_3_TITLE}}
+
+{{PHASE_3_BODY}}
+
+---
+
+## PHASE 4 — COVERAGE GAP ANALYSIS
+
+```bash
+# Swagger endpoint count
+python3 -c "
+import json
+with open('cypress/fixtures/swagger.json') as f:
+    s = json.load(f)
+total = sum(len(m) for m in s.get('paths', {}).values())
+print(f'Swagger total: {total}')
+"
+
+# Tested endpoint count
+grep -rh '"url":' cypress/e2e/API --include="*.cy.js" | grep -v '//' | wc -l
+```
+
+Classify each module folder:
+- `❌ Not Started` — no folder exists in `cypress/e2e/API/`
+- `⚠️ Partial` — folder exists but < 3 test cases
+- `✅ Well Covered` — happy path + at least one `@Regression` + auth test
+
+---
+
+## PHASE 5 — HEALTH SCORE
+
+Compute TCA QA Health Score (0–100):
+
+| Dimension | Weight | How to Score |
+|---|---|---|
+| Pass Rate | 30% | (passed / total) × 100 |
+| Coverage | 25% | (tested endpoints / swagger endpoints) × 100 |
+| Auth Tests | 15% | % of modules with a 401/403 unauthenticated test |
+| Negative Tests | 15% | % of modules with at least one `@Regression` case |
+| DB Verification | 10% | % of POST/PUT tests that verify DB state |
+| Cleanup | 5% | % of create tests with `after()` cleanup |
+
+Score bands: **90–100** Ship-ready · **75–89** Good · **60–74** Needs work · **40–59** High risk · **0–39** Critical
+
+Issue deductions (per dimension):
+- Critical: −25 · High: −15 · Medium: −8 · Low: −3
+
+Classify every issue using `.claude/skills/qa/references/issue-taxonomy.md`.
+
+---
+
+## PHASE 6 — WRITE REPORT
+
+Fill in `cypress/reports/qa-report-{DATE}.md` using the template at:
+`.claude/skills/qa/templates/qa-report-template.md`
+
+Complete every section: metadata, health score table, test run summary, all failures with taxonomy classification, coverage gaps, top 3 priority issues, recommendations.
+
+{{PHASE_6_EXTRA}}
+
+---
+
+## CRITICAL RULES
+
+{{CRITICAL_RULES}}
+
+---
+
+<!--
+=============================================================================
+TEMPLATE VARIABLES — for generating new skill variants
+=============================================================================
+
+{{SKILL_NAME}}
+  qa                → full run + fix + report
+  qa-only           → report only, no code changes
+
+{{SKILL_DESCRIPTION}}
+  qa:      Full QA cycle — run tests, fix failures, write regression tests, report
+  qa-only: Report-only audit — run tests, score health, document gaps, never touch code
+
+{{SKILL_TITLE}}
+  qa:      Run, Fix, and Report
+  qa-only: Audit Only — Report
+
+{{SKILL_INTRO}}
+  qa:      You run tests, fix failures with atomic commits, write regression tests per fix, and deliver a before/after health report.
+  qa-only: You run tests, score coverage health, document every gap and failure — but NEVER write, edit, or fix any file.
+
+{{PRE_FLIGHT_EXTRA}}
+  qa:
+    # Confirm clean working tree
+    git status --short
+    git branch --show-current
+  qa-only:
+    # Check for existing report
+    find cypress/reports -name "*.json" | sort | tail -1
+
+{{PHASE_3_TITLE}}
+  qa:      RUN TESTS + FIX LOOP
+  qa-only: RUN TESTS (OR PARSE EXISTING REPORT)
+
+{{PHASE_3_BODY}}
+  qa:
+    Run baseline:
+      npx cypress run --env CYPRESS_ENV=local,CYPRESS_TAGS="@PR" --reporter cypress-mochawesome-reporter
+
+    For each failure — fix loop:
+      1. Read the failing file
+      2. Cross-reference swagger for correct field names
+      3. Apply minimal fix with Edit tool (failing lines only)
+      4. Commit: git commit -m "fix(qa): [file]:TC-NN — [root cause]"
+      5. Re-run: npx cypress run --spec "[file]" --env CYPRESS_ENV=local
+      6. Classify: Verified / Best-effort / Reverted
+      7. Write one regression test case (red before fix, green after)
+      8. Commit: git commit -m "test(qa): TC-NN regression — [what it guards]"
+
+    Stop after 10 fixes or 3 consecutive reverts.
+
+  qa-only:
+    Run if app is available:
+      npx cypress run --env CYPRESS_ENV=local,CYPRESS_TAGS="@PR" --reporter cypress-mochawesome-reporter
+
+    Or parse existing report:
+      REPORT=$(find cypress/reports -name "*.json" | grep -v baseline | sort | tail -1)
+
+    Extract failures from report JSON and document each with taxonomy classification.
+    NEVER edit any test or source file.
+
+{{PHASE_6_EXTRA}}
+  qa:
+    Also update TODOS.md:
+    - Append deferred issues as new TODO items with severity + repro steps
+    - Mark previously-fixed TODOs as resolved with commit SHA
+
+  qa-only:
+    End with:
+    > To fix failures: /fix-test
+    > To add missing tests: /generate-api-test
+    > To add regression cases: /add-test-cases
+
+{{CRITICAL_RULES}}
+  qa:
+    1. One commit per fix — never bundle
+    2. One regression test per fix — must be red before fix, green after
+    3. Never fix app-side bugs — document as deferred
+    4. Never refactor — touch only the failing lines
+    5. failOnStatusCode: false on every test case
+    6. Revert immediately if a fix causes a passing test to fail
+    7. Stop after 10 fixes or 3 consecutive reverts
+    8. Never hardcode credentials — use Cypress.env()
+    9. If ECONNREFUSED — app is down, halt and report
+
+  qa-only:
+    1. Never edit, create, or delete any file except the report
+    2. Never suggest inline code — name the file and issue only
+    3. Verify every failure before reporting — no guesses
+    4. For every failure state the business risk
+    5. If app is down (ECONNREFUSED) — report static analysis only
+    6. Write to report file incrementally — do not batch at the end
+
+=============================================================================
+-->
