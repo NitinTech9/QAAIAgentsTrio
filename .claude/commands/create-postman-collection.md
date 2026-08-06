@@ -1,12 +1,12 @@
 # Create Postman Collection
 
-You are given a Jira ticket ID: **$ARGUMENTS**
+You are given a ticket ID: **$ARGUMENTS**
 
 Let `TICKET_ID` = the first token of `$ARGUMENTS`.
 
-**If `TICKET_ID` does not match `[A-Z]+-[0-9]+`, stop immediately and tell the user:**
-> "A Jira ticket ID is required. Usage: `/create-postman-collection <TICKET-ID>`"
-**Do not proceed.**
+**If `TICKET_ID` is empty or does not match `^#?[A-Za-z0-9][A-Za-z0-9._-]*$`, stop immediately and tell the user:**
+> "A ticket ID is required. Usage: `/create-postman-collection <TICKET-ID>`"
+**Do not proceed.** (ID shape is source-specific — `fetch-ticket.md` does the strict per-source check; see `.claude/guides/ticket-sources.md`.)
 
 ## Setup: Read Project Config
 

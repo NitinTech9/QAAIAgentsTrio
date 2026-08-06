@@ -1,35 +1,62 @@
-# Post Test Cases to Jira
+# Post Test Cases
 
-You are given a Jira ticket ID: **$ARGUMENTS**
+You are given a ticket ID: **$ARGUMENTS**
 
 Let `TICKET_ID` = the first token of `$ARGUMENTS`.
-
-**If `TICKET_ID` does not match `[A-Z]+-[0-9]+`, stop immediately and tell the user:**
-> "A Jira ticket ID is required. Usage: `/post-tests-to-jira <TICKET-ID>`"
-**Do not proceed.**
 
 ## Setup: Read Project Config
 
 Read `.claude/project-config.json` and extract all values. Then read `.claude/project-config.local.json` if it exists — merge its values over the base config (local takes precedence).
 
 Extract:
-- `project.jira.cloudId` → `CLOUD_ID`
-- `project.jira.testIssueType` → `TEST_ISSUE_TYPE` (e.g. "Test")
-- `project.jira.issueLinkType` → `LINK_TYPE` (e.g. "Test")
-- `project.jira.batchSize` → `BATCH_SIZE`
-- `project.jira.testAssigneeAccountId` → `TEST_ASSIGNEE` (may be `null`)
+- `project.ticketSource.type` → `SOURCE` (absent `ticketSource` block ⇒ pre-1.0 config ⇒ `SOURCE = "jira"`)
+- `project.ticketSource.{SOURCE}` → `SRC` (for `jira`, fall back to the deprecated top-level `project.jira`)
 - `project.paths.ticketContext` → `CONTEXT_DIR`
 - `project.paths.manualCases` → `CASES_DIR`
 - `project.paths.apiTests` and `project.paths.uiTests` — for spec file search
 
-Extract `PROJECT_KEY` from `TICKET_ID` — all letters before the first dash.
+For `SOURCE = jira`, also extract from `SRC`: `cloudId` → `CLOUD_ID`, `testIssueType` → `TEST_ISSUE_TYPE`, `issueLinkType` → `LINK_TYPE`, `batchSize` → `BATCH_SIZE`, `testAssigneeAccountId` → `TEST_ASSIGNEE` (may be `null`). Extract `PROJECT_KEY` from `TICKET_ID` — all letters before the first dash.
+
+**Validate `TICKET_ID`** against the pattern for `SOURCE` in the "Ticket ID validation" table in `.claude/guides/ticket-sources.md`. If it does not match, stop and print the expected shape for the configured source. Do not proceed.
+
+## Local-Only Mode (`SOURCE = none`)
+
+If `SOURCE = "none"`, this command **writes to disk and exits** — there is nothing to authenticate, nothing to approve, and nothing to link:
+
+1. Render the same markdown a tracker would receive (one `##` section per test case) to `{SRC.outputDir}/TICKET_ID-test-cases.md`.
+2. Write the ledger `{CONTEXT_DIR}/TICKET_ID-test-keys.json` with the test case numbers as keys, so re-runs stay idempotent and the automation generators' manual-cases gate is satisfied identically to the tracker paths.
+3. Set `steps["post-tests"] = "done"` in pipeline state.
+4. Print the output path.
+
+**Skip the review gate.** A `none` run must be fully non-interactive — do not ask for approval to write a local file, and do not warn about absent credentials. Then stop; none of the sections below apply.
+
+## Post Target (`SOURCE` ≠ `none`)
+
+Read the section for `SOURCE` in `.claude/guides/ticket-sources.md` and follow its **Post** steps. The shape differs per tracker, and the "link" step is not the same operation everywhere:
+
+| `SOURCE` | Creates | Links to parent by |
+|---|---|---|
+| `jira` | one issue of type `TEST_ISSUE_TYPE` per case | `createIssueLink` with `LINK_TYPE` |
+| `github` | one issue per case, labelled `SRC.testLabel` | a comment on the parent listing the created numbers (GitHub has no typed links) |
+| `azure` | one work item of type `SRC.testWorkItemType` | a `System.LinkTypes.Hierarchy-Reverse` relation patch |
+| `clickup` | one task per case in `SRC.listId` | `"parent": TICKET_ID` in the create payload (no separate call) |
+
+Run the same preflight as `fetch-ticket` (MCP connected / `gh` authenticated / token env var set) **before creating anything**. A partial post is worse than no post.
+
+The sections below are written for the Jira path — they are the reference implementation. For other sources, keep every behaviour identical (review gate, ledger, batching, idempotency, resume, summary comment) and swap only the API call.
 
 ## Check Pipeline State
 
 Read `{CONTEXT_DIR}/TICKET_ID-pipeline-state.json` (canonical shape).
 
-- If `steps["post-tests-to-jira"]` is `"done"`: print `✔ Tests already posted to Jira — skipping` and exit.
-- If `steps["post-tests-to-jira"]` is `"partial"`: set `RESUME_MODE = true`. This means some issues were created but linking failed. Skip the review gate and jump directly to **Link Test Issues to Parent** — only retry entries with `"linked": false` in the ledger.
+**Legacy step key.** This step was named `post-tests-to-jira` before v1.0. If `steps["post-tests"]`
+is absent but `steps["post-tests-to-jira"]` is present, **use the legacy value** as this step's
+status, and write `steps["post-tests"]` with that same value on the next state update (leave the
+legacy key in place — deleting it buys nothing and an older checkout would then re-post). Skipping
+this fallback would treat an already-posted ticket as unposted and re-run the review gate on it.
+
+- If `steps["post-tests"]` is `"done"`: print `✔ Tests already posted — skipping` and exit.
+- If `steps["post-tests"]` is `"partial"`: set `RESUME_MODE = true`. This means some issues were created but linking failed. Skip the review gate and jump directly to **Link Test Issues to Parent** — only retry entries with `"linked": false` in the ledger.
 - Otherwise: proceed normally (`RESUME_MODE = false`).
 
 ## Prerequisites
@@ -198,7 +225,7 @@ If the comment post is rejected by a transient/auto-approval-classifier error (n
 Only mark `done` if all issues were created **and** all links succeeded. Otherwise mark the state as `"partial"` and warn the user which TCs need retry.
 
 Merge into `{CONTEXT_DIR}/TICKET_ID-pipeline-state.json`:
-- Set `steps["post-tests-to-jira"]` = `"done"` | `"partial"`
+- Set `steps["post-tests"]` = `"done"` | `"partial"`
 - Set `lastUpdated` = current ISO timestamp
 - Preserve all other `steps` keys
 

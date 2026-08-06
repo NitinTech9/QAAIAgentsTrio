@@ -3,7 +3,7 @@
 You are given: **$ARGUMENTS** — `<TICKET-ID> <api|ui> [headed|headless] [local|staging|uat] [auto]`
 
 Parse `$ARGUMENTS`:
-- `TICKET_ID` = first token (must match `[A-Z]+-[0-9]+`)
+- `TICKET_ID` = first token (must match `^#?[A-Za-z0-9][A-Za-z0-9._-]*$` — see `.claude/guides/ticket-sources.md`)
 - `SPEC_TYPE` = second token — must be `api` or `ui`. **Required.** If missing/invalid, stop:
   > "Usage: `/run-tests <TICKET-ID> <api|ui> [headed|headless] [local|staging|uat] [auto]`"
 - `MODE` = third token — `headed` or `headless`. Default: `headless` for api, `headed` for ui.

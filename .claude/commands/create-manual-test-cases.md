@@ -1,12 +1,12 @@
 # Create Manual Test Cases
 
-You are given a Jira ticket ID: **$ARGUMENTS**
+You are given a ticket ID: **$ARGUMENTS**
 
 Let `TICKET_ID` = the first token of `$ARGUMENTS`.
 
-**If `TICKET_ID` does not match `[A-Z]+-[0-9]+`, stop immediately and tell the user:**
-> "A Jira ticket ID is required. Usage: `/create-manual-test-cases <TICKET-ID>`"
-**Do not proceed.**
+**If `TICKET_ID` is empty or does not match `^#?[A-Za-z0-9][A-Za-z0-9._-]*$`, stop immediately and tell the user:**
+> "A ticket ID is required. Usage: `/create-manual-test-cases <TICKET-ID>`"
+**Do not proceed.** (ID shape is source-specific — `fetch-ticket.md` does the strict per-source check; see `.claude/guides/ticket-sources.md`.)
 
 ## Setup: Read Project Config
 
@@ -132,7 +132,7 @@ Use section names that are specific to the feature, not generic.
 Read `config.testLimits` from the project config. Manual test cases are **not hard-limited** (unlike automation specs), but if the total count exceeds a reasonable threshold, warn the user:
 
 - If total test cases > 30: print a warning:
-  > ⚠️ Generated N test cases — this is unusually high. Consider whether all are necessary before posting to Jira. The review gate in `/post-tests-to-jira` will let you remove any before creating issues.
+  > ⚠️ Generated N test cases — this is unusually high. Consider whether all are necessary before posting to Jira. The review gate in `/post-tests` will let you remove any before creating issues.
 - If total test cases <= 30: no warning needed.
 
 This is advisory only — do not truncate or drop test cases.

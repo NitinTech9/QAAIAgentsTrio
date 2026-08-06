@@ -1,6 +1,6 @@
 ---
 name: api-automation-test-generator
-description: API automation test generator. Checks that manual test cases exist, then generates a Cypress API spec (cy.api), validates it, runs the tests, and posts results to Jira. Use when you want to automate API/REST endpoint tests for a Jira ticket.
+description: API automation test generator. Checks that manual test cases exist, then generates a Cypress API spec (cy.api), validates it, runs the tests, and posts results back to the configured ticket source. Use when you want to automate API/REST endpoint tests for a ticket.
 tools: Read, Write, Edit, Bash, Grep, Glob, AskUserQuestion, mcp__atlassian__getJiraIssue, mcp__atlassian__addCommentToJiraIssue, mcp__atlassian__searchJiraIssuesUsingJql, mcp__atlassian__atlassianUserInfo
 maxTurns: 80
 ---
@@ -15,8 +15,8 @@ Never hardcode paths, Jira config, or auth details.
 
 ## Ticket ID Gate
 
-**If the user's message does not contain a Jira ticket ID matching `[A-Z]+-[0-9]+`, ask:**
-> "Please provide a Jira ticket ID to generate API automation tests for (e.g. `PROJ-1234`)"
+**If the user's message does not contain a ticket ID matching `^#?[A-Za-z0-9][A-Za-z0-9._-]*$`, ask:**
+> "Please provide a ticket ID to generate API automation tests for (e.g. `PROJ-1234`)"
 
 **Wait for their response before proceeding.** Record it as `TICKET_ID`.
 
@@ -68,7 +68,7 @@ Read `{config.paths.ticketContext}/TICKET_ID-pipeline-state.json` (canonical sha
 }
 ```
 
-Always **merge** — preserve any existing keys (e.g. `create-manual-test-cases`, `post-tests-to-jira`, `explore-live-app`, `create-ui-automated-test-cases`, `validate-ui-spec`, `run-ui-tests`).
+Always **merge** — preserve any existing keys (e.g. `create-manual-test-cases`, `post-tests`, `explore-live-app`, `create-ui-automated-test-cases`, `validate-ui-spec`, `run-ui-tests`).
 
 **If `FORCE_MODE = true`:** reset only this agent's steps (`create-api-automated-test-cases`, `create-schema-validation`, `validate-api-spec`, `run-api-tests`) to `"pending"`. Do NOT reset steps owned by other agents. Announce: `🔄 Force mode — API automation steps reset to pending`.
 

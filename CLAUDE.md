@@ -77,6 +77,19 @@ Full conventions live in `CONTRIBUTING/testing-standards/` — read the relevant
 - **After** any suite change or discovery: update the matching knowledge file **in the same change** — `api-catalog.json` for spec adds/moves/renames, next `FP-###` for new recurring failures, etc. Validate edited JSON with `node -e "JSON.parse(...)"`.
 - `test-run-history.json` is appended automatically on every run; a test flipping pass/fail there is flaky — don't "fix" a flake as if it were a bug.
 
+## Ticket source and code-analysis stack
+
+`\.claude/project-config.json > project.ticketSource.type` selects where tickets come from and where
+test cases go: `jira` | `github` | `azure` | `clickup` | `none`. `none` needs no credentials — the
+pipeline reads a local markdown ticket and writes test cases to `ticketSource.none.outputDir`.
+Per-source API details live in `.claude/guides/ticket-sources.md`; only `fetch-ticket.md` and
+`post-tests.md` branch on the type, and nothing else talks to a tracker.
+
+`project.productCode.stack` selects the route/handler/model/role-gate regexes `/analyze-code` uses,
+from `.claude/stacks/code-patterns.json`. Default `generic` is noisy — set your real backend
+framework. Add a stack by adding a key to that file, or override per-project via
+`productCode.codePatterns`; never hardcode patterns in a command file.
+
 ## AI skills and Jira agents
 
 Local skills (no Jira needed): `/qa-init` (first-time project scaffolding — Cypress+JS or Playwright+JS, chosen at runtime; `/qa-init demo` for a no-backend sandbox), `/qa-help` (setup-state checker — "what do I do next?"), `/qa-selftest` (regression suite for the `.claude/` folder itself — run after adapting or upgrading the framework; `quick` for the deterministic phases only), `/qa` (run + fix + report), `/qa-only` (read-only), `/fix-test`, `/generate-api-test`, `/generate-ui-test`, `/add-test-cases`, `/audit-coverage`, `/doctor`.
@@ -85,7 +98,7 @@ All four agents accept `auto` (non-interactive: no prompts, Jira posting skipped
 
 The test framework is set in `.claude/project-config.json` (`testFramework`), and each framework's syntax/conventions live in `.claude/templates/<framework>-javascript.md` — generation and validation commands follow the template for the configured framework.
 
-Jira agent pipeline (requires Atlassian MCP): run `@manual-test-generator PROJ-XXXX` **first** — the `@api-automation-test-generator`, `@ui-automation-test-generator`, and `@postman-collection-generator` agents depend on manual test cases existing on the ticket. `@ui-automation-test-generator` additionally **explores the live app in a browser** (`/explore-live-app`) to capture verified selectors, DOM/async behavior, exact error text, and DB test data before writing the spec — so it needs the **browser MCP (`claude-in-chrome`) connected and the app running**. It uses Option-A auth: auto-detects an existing browser session, and only if none is live pauses for you to log in (it never types your password; the generated specs still log in programmatically). Individual pipeline steps (`/fetch-ticket`, `/analyze-code`, `/explore-live-app`, `/validate-spec`, `/run-tests`, `/post-tests-to-jira`, …) are in `.claude/commands/`. See `AI-AUTOMATION-GUIDE.md` for details.
+Jira agent pipeline (requires Atlassian MCP): run `@manual-test-generator PROJ-XXXX` **first** — the `@api-automation-test-generator`, `@ui-automation-test-generator`, and `@postman-collection-generator` agents depend on manual test cases existing on the ticket. `@ui-automation-test-generator` additionally **explores the live app in a browser** (`/explore-live-app`) to capture verified selectors, DOM/async behavior, exact error text, and DB test data before writing the spec — so it needs the **browser MCP (`claude-in-chrome`) connected and the app running**. It uses Option-A auth: auto-detects an existing browser session, and only if none is live pauses for you to log in (it never types your password; the generated specs still log in programmatically). Individual pipeline steps (`/fetch-ticket`, `/analyze-code`, `/explore-live-app`, `/validate-spec`, `/run-tests`, `/post-tests`, …) are in `.claude/commands/`. See `AI-AUTOMATION-GUIDE.md` for details.
 
 ## Git & PR conventions
 

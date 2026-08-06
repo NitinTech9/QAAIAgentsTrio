@@ -27,8 +27,45 @@ Read `.claude/project-config.json` (+ `project-config.local.json` if present). T
    - Files referenced by skills exist: `.claude/skills/qa/references/issue-taxonomy.md`, `.claude/skills/qa/templates/qa-report-template.md`, both `.claude/templates/*-javascript.md`.
    - Every distinct `{config.paths.<key>}` placeholder used anywhere in `.claude/commands/` and `.claude/agents/` (`grep -rhoE '\{config\.paths\.[A-Za-z]+\}' | sort -u`) names a key that exists in the config's `paths` object. Skip notation examples (a single capital letter like `{config.paths.X}` in a sentence *defining* the placeholder syntax); read the surrounding line before failing any hit.
    - The selftest fixtures themselves exist: `SELFTEST-1.json`, `SELFTEST-1-analysis.md`, `SELFTEST-1.md`, and both `specs/*.fixture` files.
-4. **Pipeline-state contract:** each step key declared in an agent's canonical state JSON is also used by its owning command file (`fetch-ticket`, `analyze-code`, `create-manual-test-cases`, `post-tests-to-jira`, `create-api-automated-test-cases`, `create-schema-validation`, `validate-api-spec`, `validate-ui-spec`, `run-api-tests`, `run-ui-tests`, `explore-live-app`, `create-ui-automated-test-cases`, `generate-postman-collection`).
-5. **Lock protocol declared everywhere:** all four agents reference the Run Lock protocol and their own domain (`manual`, `api`, `ui`, `postman`); the canonical atomic-write snippet exists in `manual-test-generator.md`.
+   - **Every framework file referenced by any command/agent/skill exists.** This is the check that catches a payload gap before a teammate hits it:
+     ```bash
+     grep -rhoE '\.claude/(guides|stacks|templates|schemas|selftest|hooks)/[A-Za-z0-9._/-]+' \
+       .claude/commands .claude/agents .claude/skills \
+       | sed 's/[.,)]*$//' | sort -u | while read -r f; do
+           [ -e "$f" ] || echo "MISSING: $f"
+         done
+     ```
+     Strip trailing punctuation before testing — a reference at the end of a prose sentence
+     otherwise reports a false MISSING.
+4. **Ticket source is coherent:**
+   - `project.ticketSource.type` ∈ {`jira`, `github`, `azure`, `clickup`, `none`}.
+   - The sub-block for the configured type exists and has its required keys (`jira.cloudId`, `github.repo`, `azure.organization`+`azure.project`, `clickup.listId`, `none.outputDir`).
+   - `.claude/guides/ticket-sources.md` has a `## <type>` section for **every** enum value — not just the configured one. A missing section means a user who switches sources hits an undefined branch.
+   - No `tokenEnvVar` value looks like an actual secret: each must match `^[A-Z][A-Z0-9_]*$`. A literal token in config is a **hard failure**, not a warning.
+5. **Code-pattern presets are coherent:**
+   - `project.productCode.stack` is a non-underscore top-level key in `.claude/stacks/code-patterns.json`.
+   - Every non-underscore preset in that file has all of `route`, `handler`, `model`, `roleGate`, `sourceGlobs`, each a non-empty array.
+   - Every regex in every preset compiles: `node -e "new RegExp(p)"` per pattern. An invalid regex silently returns zero matches, which reads as "no routes found" rather than as an error.
+   - No route/handler/model/roleGate regex is hardcoded in `.claude/commands/analyze-code.md` — it must reference `PATTERNS.*` only. Grep for stack-specific giveaways (`addAuthAPIRoute`, `chi.URLParam`, `urlpatterns`, `@GetMapping`, `Route::`) in that file; any hit is a regression back to a single-stack framework.
+6. **Hooks are wired and enforcing.** For each entry in `.claude/settings.json > hooks`, the referenced script exists and is executable. Then smoke-test both hooks by piping a payload to stdin and checking the exit code — the failure mode being guarded against is a hook that exits 0 on everything:
+
+   | Hook | stdin payload | Expected |
+   |---|---|---|
+   | `block-risky-bash.sh` | `{"tool_input":{"command":"git commit -m \"x\" --trailer \"Co-Authored-By: a\""}}` | exit 2 |
+   | `block-risky-bash.sh` | `{"tool_input":{"command":"git push --force origin main"}}` | exit 2 |
+   | `block-risky-bash.sh` | `{"tool_input":{"command":"NODE_ENV=production npx cypress run"}}` | exit 2 |
+   | `block-risky-bash.sh` | `{"tool_input":{"command":"npx cypress run --spec x.cy.js"}}` | exit 0 |
+   | `block-risky-bash.sh` | `{"tool_input":{"command":"git log --oneline"},"description":"mentions co-authored-by"}` | exit 0 (must not over-match outside the command field) |
+   | `block-secret-writes.sh` | `{"tool_input":{"file_path":"/x/.env"}}` | exit 2 |
+   | `block-secret-writes.sh` | `{"tool_input":{"file_path":"/x/cypress/e2e/API/01-login.cy.js"}}` | exit 0 |
+
+   Any deviation is a hard failure — report which payload and which direction.
+7. **Legacy step-key fallback intact:** `post-tests.md` must still handle the pre-1.0
+   `post-tests-to-jira` step key (grep for it). Without that fallback, upgrading mid-ticket re-runs
+   the posting step on tickets that were already posted. If the reference is gone, that is a
+   regression, not a cleanup.
+8. **Pipeline-state contract:** each step key declared in an agent's canonical state JSON is also used by its owning command file (`fetch-ticket`, `analyze-code`, `create-manual-test-cases`, `post-tests`, `create-api-automated-test-cases`, `create-schema-validation`, `validate-api-spec`, `validate-ui-spec`, `run-api-tests`, `run-ui-tests`, `explore-live-app`, `create-ui-automated-test-cases`, `generate-postman-collection`).
+9. **Lock protocol declared everywhere:** all four agents reference the Run Lock protocol and their own domain (`manual`, `api`, `ui`, `postman`); the canonical atomic-write snippet exists in `manual-test-generator.md`.
 
 ## Phase 2 — Hard-gate validator scripts (fixture round-trip)
 

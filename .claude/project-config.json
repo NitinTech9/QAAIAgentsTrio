@@ -3,7 +3,39 @@
   "project": {
     "name": "YourProject",
     "dbVerification": true,
+    "ticketSource": {
+      "_comment": "Where tickets are read from and test cases are written back to. `none` is the default and needs no credentials or MCP — the full pipeline runs against a local markdown ticket and writes test cases to disk. Switch to your tracker once the pipeline works. Per-source API recipes live in .claude/guides/ticket-sources.md; only that guide and fetch-ticket.md/post-tests.md know how a tracker works.",
+      "type": "none",
+      "none": {
+        "outputDir": "docs/test-cases"
+      },
+      "jira": {
+        "_comment": "Requires the Atlassian MCP connection. cloudId may be your site domain or the UUID — fetch-ticket resolves a domain to a UUID automatically.",
+        "cloudId": "your-org.atlassian.net",
+        "testIssueType": "Test",
+        "issueLinkType": "Test",
+        "batchSize": 8,
+        "testAssigneeAccountId": null
+      },
+      "github": {
+        "_comment": "Uses the gh CLI — no MCP needed. Verify with `gh auth status`.",
+        "repo": "owner/repo",
+        "testLabel": "test-case"
+      },
+      "azure": {
+        "_comment": "PAT is read from the named env var and never written to disk. Needs the `Work Items: Read & Write` scope.",
+        "organization": "your-org",
+        "project": "your-project",
+        "testWorkItemType": "Test Case",
+        "tokenEnvVar": "AZURE_DEVOPS_PAT"
+      },
+      "clickup": {
+        "listId": "000000000",
+        "tokenEnvVar": "CLICKUP_TOKEN"
+      }
+    },
     "jira": {
+      "_comment": "DEPRECATED — moved to ticketSource.jira. Kept so pre-1.0 configs keep working: commands read ticketSource.jira first and fall back here. Delete this block once ticketSource.jira is filled in.",
       "cloudId": "your-org.atlassian.net",
       "testIssueType": "Test",
       "issueLinkType": "Test",
@@ -66,8 +98,18 @@
     "productCode": {
       "_comment": "rootPaths MUST be overridden in .claude/project-config.local.json with your local repo paths",
       "rootPaths": [],
-      "sourceGlobs": ["*.go", "*.js", "*.jsx", "*.ts", "*.tsx", "*.sql"],
-      "excludeDirs": ["node_modules", ".git", "dist", "build", "coverage", "vendor"]
+      "stack": "generic",
+      "_stackComment": "Selects the route/handler/model/role-gate search patterns /analyze-code uses. Valid keys are the top-level keys of .claude/stacks/code-patterns.json: go-chi, go-gin, express, nestjs, django, fastapi, rails, spring-boot, laravel, dotnet, generic. `generic` works but is noisy — set your real stack. If your framework is missing, add a key to code-patterns.json; never edit analyze-code.md.",
+      "codePatterns": {
+        "_comment": "Optional per-project overrides merged OVER the selected stack preset, field by field. Use this for in-house route helpers the preset cannot know about, e.g. \"route\": [\"registerInternalRoute\"]. Leave empty to use the preset as-is.",
+        "route": [],
+        "handler": [],
+        "model": [],
+        "roleGate": []
+      },
+      "sourceGlobs": [],
+      "_sourceGlobsComment": "Empty = inherit sourceGlobs from the selected stack preset. Set explicitly only to override.",
+      "excludeDirs": ["node_modules", ".git", "dist", "build", "coverage", "vendor", "target", "__pycache__", ".venv"]
     },
     "postman": {
       "_comment": "Describe your app's real auth flow here so generated collections model it correctly (cookie vs bearer, where the CSRF token comes from). See cypress/support/commands.js in your repo for the source of truth.",

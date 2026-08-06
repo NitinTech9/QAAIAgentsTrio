@@ -1,0 +1,27 @@
+{
+  "_comment": [
+    "Machine-specific Claude Code settings. Copy to .claude/settings.local.json (git-ignored) and",
+    "replace the paths with your real product repo locations — the same paths you put in",
+    "project-config.local.json under productCode.rootPaths.",
+    "",
+    "This file exists so the committed .claude/settings.json stays valid in every clone.",
+    "Absolute paths never belong in a shared settings file: a deny rule for a path that does not",
+    "exist on this machine protects nothing, and additionalDirectories pointing at a missing",
+    "directory just fails. Nothing here is required to run the framework — add it when you want",
+    "the agents to read your product source for /analyze-code.",
+    "",
+    "Delete the _comment key before use; Claude Code ignores unknown keys but it is noise."
+  ],
+  "permissions": {
+    "additionalDirectories": [
+      "/Users/you/code/your-backend",
+      "/Users/you/code/your-frontend"
+    ],
+    "deny": [
+      "Read(/Users/you/code/your-backend/config.toml)",
+      "Edit(/Users/you/code/your-backend/config.toml)",
+      "Read(/Users/you/code/your-backend/**/.env*)",
+      "Edit(/Users/you/code/your-backend/**/.env*)"
+    ]
+  }
+}

@@ -4,3 +4,9 @@
 
 # OS noise
 .DS_Store
+
+# install.sh byproducts (host-repo merge artifacts — never commit these)
+.claude/settings.qa-suggested.json
+.claude/.qa-framework-manifest.json
+.claude/.qa-backup-*/
+*.qa-incoming
