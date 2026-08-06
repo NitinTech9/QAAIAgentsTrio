@@ -1,84 +1,177 @@
 # AI Automation Guide
 
-**How to use the AI-powered agents, commands, and skills in your QA suite**
+**The complete reference for the agents, commands, and skills in this framework.**
 
-This guide explains the three-tier automation system built into this framework using Claude Code. Everything runs inside your IDE (VS Code extension) or terminal (`claude` CLI).
+Everything here runs inside Claude Code — the VS Code extension or the `claude` terminal command.
+There is no separate service, no dashboard, and nothing to deploy.
 
----
-
-## Table of Contents
-
-- [Getting Started](#getting-started)
-- [Key Concepts](#key-concepts)
-- [System Overview](#system-overview)
-- [Tier 1 -- Skills (Ad-Hoc, No Jira)](#tier-1----skills-ad-hoc-no-jira)
-- [Tier 2 -- Commands (Individual Pipeline Steps)](#tier-2----commands-individual-pipeline-steps)
-- [Tier 3 -- Agents (Full Jira Pipelines)](#tier-3----agents-full-jira-pipelines)
-- [End-to-End Walkthrough](#end-to-end-walkthrough)
-- [Decision Guide -- What to Use When](#decision-guide----what-to-use-when)
-- [Real-World Scenarios](#real-world-scenarios)
-- [Two-Backend Architecture (Primary + Secondary)](#two-backend-architecture-primary--secondary)
-- [Configuration Reference](#configuration-reference)
-- [Sample Output Files](#sample-output-files)
-- [Troubleshooting](#troubleshooting)
+New to the framework? Read the next two sections and stop. They are enough to start working. The
+rest of this document is reference material you look things up in, not a tutorial you finish.
 
 ---
 
-## Getting Started
+## Contents
 
-### What You Need
+**Start here** — enough to begin working
+1. [What this actually does, in plain language](#what-this-actually-does-in-plain-language)
+2. [Your first run](#your-first-run)
+3. [The five ideas everything else is built on](#the-five-ideas-everything-else-is-built-on)
+4. [System overview](#system-overview)
 
-| Requirement | Why |
-|---|---|
-| **Claude Code** | VS Code extension or `claude` CLI — this is where you type all commands |
-| **Jira access** | The Atlassian MCP connection must be configured (agents fetch tickets and post results to Jira) |
-| **Node.js + Cypress** | The test framework — `npm install` should already be done |
-| **Product source code** | Your product's source repo(s) cloned locally (for code analysis) |
+**Reference** — look things up as you need them
 
-### First-Time Setup (2 minutes)
+5. [Tier 1 — Skills](#tier-1----skills-ad-hoc-no-ticket-needed) · no ticket required
+6. [Tier 2 — Commands](#tier-2----commands-individual-pipeline-steps) · one step each
+7. [Tier 3 — Agents](#tier-3----agents-full-ticket-pipelines) · full pipelines
+8. [End-to-end walkthrough](#end-to-end-walkthrough) · a complete worked example
+9. [Decision guide — what to use when](#decision-guide----what-to-use-when)
+10. [Real-world scenarios](#real-world-scenarios) · eight common situations
+11. [Two-backend architecture](#two-backend-architecture-primary--secondary)
+12. [Configuration reference](#configuration-reference)
+13. [Sample output files](#sample-output-files)
+14. [Troubleshooting](#troubleshooting)
 
-```bash
-# 1. Clone this repo and install dependencies
-git clone <repo-url> && cd <your-qa-repo>
-npm install
+**Related documents**
 
-# 2. Set up your local config with your machine-specific paths
-cp .claude/project-config.local.example.json .claude/project-config.local.json
+- [README.md](README.md) — what this is, and whether it is safe to point at your project
+- [HOW-TO-ADAPT.md](HOW-TO-ADAPT.md) — the setup runbook, with time estimates
 
-# 3. Edit the local config — set the paths to your local product source repos
-# Open .claude/project-config.local.json and update productCode.rootPaths:
-#   "/absolute/path/to/your/primary-app"
-#   "/absolute/path/to/your/secondary-app"   (only if you test a second backend)
+---
 
-# 4. Verify the Atlassian MCP connection is active in Claude Code
-# (You should see "Atlassian" in your MCP server list)
+## What this actually does, in plain language
+
+A QA engineer handed a ticket does roughly seven things:
+
+1. Reads the ticket, including the comments where the real decisions were made.
+2. Reads the application code to find out what the feature *actually* does.
+3. Writes down the test cases in language a human can review.
+4. Gets those test cases agreed.
+5. Turns the agreed cases into automated tests.
+6. Runs them.
+7. Reports what happened, on the ticket.
+
+This framework performs all seven, and stops for a human at step 4 — the one where judgement
+matters and mistakes are expensive to unwind.
+
+```mermaid
+flowchart TD
+    subgraph AUTO1["Automated"]
+        S1["1 · Read the ticket<br/><small>summary, description, every comment</small>"]
+        S2["2 · Read your application code<br/><small>routes, validation, permissions, data model</small>"]
+        S3["3 · Draft the test cases<br/><small>human-readable, numbered, reviewable</small>"]
+    end
+
+    HUMAN{{"4 · 👤 You review and approve<br/><b>nothing is written until you say yes</b>"}}
+
+    subgraph AUTO2["Automated"]
+        S5["5 · Write the automated tests<br/><small>+ mechanical quality gates</small>"]
+        S6["6 · Run them"]
+        S7["7 · Report results on the ticket"]
+    end
+
+    S1 --> S2 --> S3 --> HUMAN
+    HUMAN -->|"approved"| S5 --> S6 --> S7
+    HUMAN -->|"needs changes"| S3
+
+    style AUTO1 fill:#e7f3ff,stroke:#0366d6,color:#000
+    style AUTO2 fill:#e7f3ff,stroke:#0366d6,color:#000
+    style HUMAN fill:#fff3cd,stroke:#b8860b,stroke-width:3px,color:#000
 ```
 
-### Your First Run
+**Step 2 is what makes the output usable.** Tests written from a ticket description alone miss the
+validation rules, error codes, and permission checks that only exist in the code. Reading the source
+is not an optimisation here — it is the difference between test cases you'd sign off and test cases
+you'd rewrite.
 
-Pick a Jira ticket and try:
+### Glossary
+
+Six terms are used throughout. Nothing else is jargon.
+
+| Term | Plain meaning |
+|---|---|
+| **Skill** | A tool you invoke by typing `/name`. Needs no ticket. Example: `/fix-test`. |
+| **Command** | One single step of the pipeline, also typed as `/name`. Example: `/run-tests`. |
+| **Agent** | Runs a whole sequence of commands for one ticket. Typed as `@name`. |
+| **Spec** | A file of automated tests. One spec usually covers one endpoint or one screen. |
+| **Gate** | A check that *stops* the process. Some are mechanical, some ask you. |
+| **Pipeline state** | A small file recording which steps finished, so an interrupted run resumes. |
+
+---
+
+## Your first run
+
+### What you need
+
+| Requirement | Why | Optional? |
+|---|---|---|
+| **Claude Code** | Where you type everything | Required |
+| **Node.js + your test runner** | Running the generated tests | Required |
+| **Your application's source, cloned locally** | Step 2 above — reading the code | Strongly recommended |
+| **A tracker connection** | Only if `ticketSource` isn't `none` | Optional |
+| **Browser access (`claude-in-chrome` MCP)** | Only for UI test generation | Optional |
+
+### Setup
+
+If you haven't installed yet, follow **[HOW-TO-ADAPT.md](HOW-TO-ADAPT.md)** — it is a runbook with
+time estimates. The short version:
+
+```bash
+./install.sh --target /path/to/your-test-repo
+cp .claude/project-config.local.example.json .claude/project-config.local.json
+# set productCode.rootPaths to your application repo paths
+/qa-selftest        # confirm the framework is healthy
+```
+
+### Then run this
 
 ```
 @manual-test-generator PROJ-456
 ```
 
-The agent will:
-1. Fetch the ticket from Jira (you'll see the title and description printed)
-2. Search your source code for related endpoints
-3. Generate manual test cases (you'll see the full list)
-4. Ask for your approval before posting anything to Jira
+What you will see, in order:
 
-That's it. If anything goes wrong, check [Troubleshooting](#troubleshooting).
+1. The ticket's title and description, so you can confirm it fetched the right one.
+2. A list of the source files it found and what it learned from each.
+3. The drafted test cases, in full.
+4. **A prompt asking whether to post them.** Read the cases. This is the moment that decides
+   whether everything downstream is worth having.
+
+Then, once manual cases exist:
+
+```
+@api-automation-test-generator PROJ-456    # API endpoints
+@ui-automation-test-generator PROJ-456     # browser flows
+```
+
+**No tracker configured yet?** Write `docs/test-cases/LOCAL-1.md` with a `# Summary` and
+`## Description`, then run `@manual-test-generator LOCAL-1`. The whole pipeline runs offline.
+
+**Stuck at any point?** `/qa-help` inspects your real setup state and prints your next step.
 
 ---
 
-## Key Concepts
+## The five ideas everything else is built on
 
-Before diving into the tiers, here are the core ideas that every agent and command relies on.
+### 1 · Pipeline state — interrupted runs resume
 
-### Pipeline State
+Every ticket gets a small state file recording which steps finished.
 
-Every Jira ticket gets a `pipeline-state.json` file that tracks which steps have been completed:
+```mermaid
+stateDiagram-v2
+    [*] --> fetch_ticket
+    fetch_ticket --> analyze_code: done
+    analyze_code --> create_manual_cases: done
+    create_manual_cases --> post_to_tracker: done
+    post_to_tracker --> automation: done
+    automation --> [*]
+
+    note right of analyze_code
+        Context limit hit here?
+        Rerun the same command.
+        The first two steps are
+        marked done and skipped.
+    end note
+```
 
 ```json
 {
@@ -87,97 +180,197 @@ Every Jira ticket gets a `pipeline-state.json` file that tracks which steps have
     "fetch-ticket": "done",
     "analyze-code": "done",
     "create-manual-test-cases": "done",
-    "post-tests-to-jira": "pending",
-    "create-api-automated-test-cases": "pending",
-    "create-schema-validation": "pending",
-    "validate-api-spec": "pending",
-    "run-api-tests": "pending"
+    "post-tests": "pending"
   },
   "lastUpdated": "2026-06-17T10:30:00.000Z"
 }
 ```
 
-**Why it matters:** If you run an agent and it gets interrupted (VS Code closes, network drops, context limit), just rerun the same command. The agent reads this file, sees which steps are already "done", skips them, and picks up where it left off.
+**Why you care:** VS Code closed, the network dropped, the context ran out — rerun the identical
+command. Nothing is redone and nothing is lost. Writes are atomic, and API and UI automation hold
+separate locks, so they can run in parallel on the same ticket safely.
 
-### Self-Healing
+### 2 · Self-healing — run any step, any time
 
-When a command needs a file that doesn't exist yet (e.g., `/create-manual-test-cases` needs the ticket context but you never ran `/fetch-ticket`), instead of failing with an error, it **automatically runs the missing prerequisite** first.
+If a command needs something that doesn't exist yet, it produces the missing thing rather than an
+error.
 
 ```
 You run:  /create-manual-test-cases PROJ-456
-Missing:  PROJ-456.json doesn't exist
-Agent:    🔄 Missing ticket context — auto-running /fetch-ticket
+Missing:  PROJ-456.json — you never ran /fetch-ticket
+Result:   🔄 Missing ticket context — auto-running /fetch-ticket
           ✔ Fetch ticket completed
-          Now continuing with create-manual-test-cases...
+          Continuing with create-manual-test-cases...
 ```
 
-This means you can run any command at any point — it fills in the gaps.
+You never have to memorise the order.
 
-### Idempotent + Force Rerun
-
-Running the same command twice is always safe — completed steps are skipped. To regenerate from scratch, add `force`:
+### 3 · Reruns are safe; `force` starts over
 
 ```
-@manual-test-generator PROJ-456          # skips all "done" steps
-@manual-test-generator PROJ-456 force    # resets all steps, reruns everything
+@manual-test-generator PROJ-456          # skips completed steps
+@manual-test-generator PROJ-456 force    # resets everything and regenerates
 ```
 
-### Human Gates
+Tracker writes are protected by a ledger, so a rerun cannot create duplicate test issues. Use
+`force` when the requirements changed, not when something merely looks stuck.
 
-Agents **stop and ask for your approval** before creating Jira issues or posting comments. Exception: the UI automation agent executes generated tests automatically (headless, local) — generated automation is only done when it has run green; use the `skip-run` flag to opt out.
+### 4 · Two kinds of gate — and the difference matters
 
-### Hard Gates vs Soft Dependencies
+```mermaid
+flowchart TD
+    subgraph HARD["🛑 Hard gates — STOP, no workaround"]
+        H1["Automation requires manual<br/>test cases to exist"]
+        H2["Spec accepts a 5xx error"]
+        H3["Spec asserts 200 <b>or</b> 400<br/><i>a test that cannot fail</i>"]
+        H4["Create/update/delete with no<br/>check that data persisted"]
+    end
 
-- **Hard gate** = the agent will STOP and refuse to continue (e.g., API agent requires manual test cases to exist)
-- **Soft dependency / self-heal** = the agent auto-runs the missing step (e.g., code analysis auto-runs fetch-ticket if needed)
+    subgraph SOFT["🔄 Soft dependencies — fixed automatically"]
+        F1["Ticket context missing<br/>→ fetches it"]
+        F2["Code analysis missing<br/>→ runs it"]
+    end
+
+    subgraph ASK["👤 Human gates — waits for you"]
+        A1["Before any tracker write"]
+        A2["Before executing tests"]
+    end
+
+    style HARD fill:#f8d7da,stroke:#c00,stroke-width:2px,color:#000
+    style SOFT fill:#e7f3ff,stroke:#0366d6,color:#000
+    style ASK fill:#fff3cd,stroke:#b8860b,color:#000
+```
+
+The four hard gates on generated specs are the part worth understanding, because they are what
+separates this from a code generator:
+
+| Gate | Rejects | Why it exists |
+|---|---|---|
+| **No 5xx accepted** | `expect(status).to.eq(500)` | A server error is a bug, never an expected result. Asserting it cements the bug. |
+| **No ambiguous status** | `oneOf([200, 400])` | It passes either way. It proves nothing while looking like coverage. |
+| **Persistence required** | A create with no database check | An API can return `201` and save nothing. |
+| **Manual cases first** | Automation with no agreed cases | Automation without a human-agreed definition of correct is just code that passes. |
+
+These run as scripts, not suggestions. A spec that fails one is not written.
+
+### 5 · Accumulated knowledge — the suite gets smarter
+
+The framework keeps written records under `cypress/knowledge/` and **reads them before generating
+anything**:
+
+| File | What it prevents |
+|---|---|
+| `api-behavior-notes.json` | Writing a test that expects `200` from an endpoint known to be broken |
+| `failure-patterns.json` | Re-diagnosing a failure that was already solved once, months ago |
+| `api-dependency-map.json` | Test data cleaned up in the wrong order, causing cascading failures |
+| `test-run-history.json` | Treating a flaky test as a real bug — history shows it flipping |
+
+Discover something new? It gets written back in the same change. This is the compounding part: the
+framework is more useful in month six than in week one, because your team's hard-won knowledge is
+recorded where the next run will actually read it.
 
 ---
 
-## System Overview
+## System overview
 
-The AI automation has **three tiers**, each serving a different need:
+Three tiers. Pick by how much you want to hand over.
 
+```mermaid
+flowchart TB
+    subgraph T3["🤖 TIER 3 · AGENTS — one ticket, whole job"]
+        direction TB
+        A1["@manual-test-generator"]
+        A2["@api-automation-test-generator"]
+        A3["@ui-automation-test-generator"]
+        A4["@postman-collection-generator"]
+    end
+
+    subgraph T2["🔧 TIER 2 · COMMANDS — one step each"]
+        direction TB
+        C1["/fetch-ticket"] --> C2["/analyze-code"] --> C3["/create-manual-test-cases"]
+        C3 --> C4["/post-tests"]
+        C4 --> C5["/create-api-automated-test-cases"] --> C6["/validate-spec"] --> C7["/run-tests"]
+        C8["/explore-live-app"] -.->|"UI path only"| C5
+    end
+
+    subgraph T1["⚡ TIER 1 · SKILLS — no ticket required"]
+        direction TB
+        S1["/qa · /qa-only<br/><small>run, fix, report</small>"]
+        S2["/fix-test<br/><small>paste an error</small>"]
+        S3["/generate-api-test · /generate-ui-test<br/><small>from a PR, curl, or description</small>"]
+        S4["/audit-coverage<br/><small>what isn't tested</small>"]
+        S5["/doctor · /qa-help · /qa-selftest<br/><small>diagnostics</small>"]
+    end
+
+    T3 ==>|"agents are literally<br/>sequences of commands"| T2
+
+    style T3 fill:#e7f3ff,stroke:#0366d6,stroke-width:2px,color:#000
+    style T2 fill:#fff9e6,stroke:#b8860b,color:#000
+    style T1 fill:#f0f0f0,stroke:#666,color:#000
 ```
-                         ┌─────────────────────────────────────────────┐
-                         │          TIER 3: AGENTS                     │
-                         │   Full Jira-driven pipelines                │
-                         │   @manual-test-generator TKT-123            │
-                         │   @api-automation-test-generator TKT-123    │
-                         │                                             │
-                         │   Internally chains multiple commands:      │
-                         │   ┌───────────────────────────────────────┐ │
-                         │   │      TIER 2: COMMANDS                 │ │
-                         │   │  Individual pipeline steps            │ │
-                         │   │  /fetch-ticket                        │ │
-                         │   │  /analyze-code                        │ │
-                         │   │  /create-manual-test-cases             │ │
-                         │   │  /create-api-automated-test-cases      │ │
-                         │   │  /validate-spec                       │ │
-                         │   │  /run-tests                           │ │
-                         │   │  /post-tests-to-jira                  │ │
-                         │   └───────────────────────────────────────┘ │
-                         └─────────────────────────────────────────────┘
 
-                         ┌─────────────────────────────────────────────┐
-                         │          TIER 1: SKILLS                     │
-                         │   Standalone, ad-hoc, no Jira needed        │
-                         │   /generate-api-test                        │
-                         │   /generate-ui-test                         │
-                         │   /fix-test                                 │
-                         │   /add-test-cases                           │
-                         │   /qa          /qa-only                     │
-                         │   /audit-coverage                           │
-                         └─────────────────────────────────────────────┘
+| Tier | You provide | You get | Typical use |
+|---|---|---|---|
+| **Skills** | A description, an error, or nothing | Immediate result | Daily work, firefighting |
+| **Commands** | A ticket ID | One step's output | Redoing or inspecting a step |
+| **Agents** | A ticket ID | The entire pipeline | New ticket, full coverage |
+
+**An agent is not a different mechanism from a command** — it is a defined sequence of them with
+checkpointing between each. Anything an agent does, you can do one command at a time, which is
+exactly how you debug a run that went wrong.
+
+### Where the pipeline touches the outside world
+
+```mermaid
+flowchart LR
+    subgraph EXT["Outside your test repo"]
+        TR["🎫 Tracker<br/>Jira · GitHub · Azure<br/>ClickUp · or none"]
+        SRC["📂 Your application source<br/><b>READ-ONLY</b>"]
+        APP["🌐 Your running app<br/><i>UI generation only</i>"]
+    end
+
+    subgraph REPO["Your test repository"]
+        PIPE["Agents and commands"]
+        OUT["Generated specs<br/>Manual test cases<br/>Reports"]
+        KN["Accumulated knowledge"]
+    end
+
+    TR <-->|"read ticket<br/>write test cases<br/><i>after your approval</i>"| PIPE
+    SRC -->|"read only — never written"| PIPE
+    APP -->|"real selectors,<br/>real error text"| PIPE
+    PIPE --> OUT
+    PIPE <--> KN
+
+    style SRC fill:#f8d7da,stroke:#c00,color:#000
+    style EXT fill:#f0f0f0,stroke:#666,color:#000
+    style REPO fill:#e7f3ff,stroke:#0366d6,color:#000
 ```
 
-**Key difference:**
-- **Skills** = you describe what you want in plain English, get instant results
-- **Commands** = you pick a specific step to run (requires a Jira ticket ID)
-- **Agents** = you give a ticket ID, the agent runs the entire workflow end-to-end
+Your application's source is opened **read-only** — enforced by permission rules, not just by
+instruction. Two safety hooks additionally block any command targeting a production environment and
+any attempt to write a secrets file. See the safety table in
+[README.md](README.md#is-this-safe-to-point-at-my-project).
+
+### Which ticket sources work with what
+
+`ticketSource.type` is set once in config. Only two files know how a tracker works —
+`fetch-ticket.md` and `post-tests.md` — and both branch on that one value, following the
+recipes in `.claude/guides/ticket-sources.md`.
+
+| Source | Ticket ID looks like | Needs |
+|---|---|---|
+| `none` *(default)* | `LOCAL-1`, `checkout-flow` | Nothing — reads and writes local markdown |
+| `jira` | `PROJ-1234` | Atlassian MCP connected |
+| `github` | `#412` | `gh` CLI authenticated |
+| `azure` | `88213` | A PAT in an environment variable |
+| `clickup` | `86b2xyz` | An API token in an environment variable |
+
+Everything downstream reads one normalised ticket file and cannot tell which tracker it came from —
+so switching trackers changes one config field and nothing else.
 
 ---
 
-## Tier 1 -- Skills (Ad-Hoc, No Jira)
+## Tier 1 -- Skills (Ad-Hoc, No Ticket Needed)
 
 Skills are slash commands you type into Claude Code. They work immediately with no setup -- just describe what you need.
 
@@ -428,13 +621,13 @@ Reads the ticket context, discussion insights, and code analysis, then generates
 - **Pipeline key:** `create-manual-test-cases`
 - **Self-heals:** Auto-runs `/fetch-ticket` and `/analyze-code` if their outputs are missing
 
-#### /post-tests-to-jira TKT-123
+#### /post-tests TKT-123
 
 Creates Jira Test issues for each manual test case and links them to the parent ticket. Has a human review gate — presents the full list and waits for you to approve, remove, update, or add test cases before creating anything.
 
 - **Reads:** `docs/test-cases/TKT-123.md` + `TKT-123.json`
 - **Saves:** `docs/.ticket-context/TKT-123-test-keys.json` (ledger mapping TC numbers to Jira keys)
-- **Pipeline key:** `post-tests-to-jira`
+- **Pipeline key:** `post-tests`
 - **Human gate:** Must type "approve" or "yes" to proceed
 
 #### /create-api-automated-test-cases TKT-123
@@ -527,7 +720,7 @@ You can run any command independently — if its prerequisites are missing, it s
 
 ---
 
-## Tier 3 -- Agents (Full Jira Pipelines)
+## Tier 3 -- Agents (Full Ticket Pipelines)
 
 Agents are intelligent orchestrators that chain multiple commands into a complete, end-to-end workflow. You give them a Jira ticket ID, and they handle everything — from fetching the ticket details to generating tests and posting results back to Jira.
 
@@ -665,7 +858,7 @@ This is the **first agent you run for any Jira ticket**. It fetches the ticket f
 │   ├── Saves: docs/test-cases/TKT-123.md
 │   └── Sets: pipeline-state → create-manual-test-cases = "done"
 │
-├── Step 4: /post-tests-to-jira TKT-123
+├── Step 4: /post-tests TKT-123
 │   │
 │   │  Creates Jira Test issues for each manual test case and links them to the
 │   │  parent ticket. This is the only step that modifies Jira, so it has a human
@@ -690,7 +883,7 @@ This is the **first agent you run for any Jira ticket**. It fetches the ticket f
 │   ├── Links each Test issue to parent ticket via createIssueLink
 │   ├── Posts summary comment to parent ticket with full test case table
 │   ├── Saves ledger: docs/.ticket-context/TKT-123-test-keys.json
-│   └── Sets: pipeline-state → post-tests-to-jira = "done"
+│   └── Sets: pipeline-state → post-tests = "done"
 │       └── If any links failed: sets "partial" (rerun retries only the failed links)
 │
 └── Final Summary: ticket details, files analyzed, TCs generated, Jira keys created
@@ -1258,7 +1451,7 @@ Here's exactly what happens when you run the full pipeline for a Jira ticket, st
 ✔ Created: PROJ-509, PROJ-510, PROJ-511, PROJ-512, PROJ-513, PROJ-514
 ✔ All 14 issues linked to PROJ-456
 ✔ Summary comment posted to PROJ-456
-✔ Pipeline state: post-tests-to-jira → done
+✔ Pipeline state: post-tests → done
 
 Final Summary:
   Ticket: PROJ-456 — Add ability to manually expire user subscriptions
@@ -1372,45 +1565,39 @@ cypress/
 | Need a Postman collection for an endpoint | `@postman-collection-generator TKT-123` | Agent |
 | Want to re-run just the tests for a ticket | `/run-tests TKT-123 api headless local` | Command |
 | Want to re-validate a spec after manual edits | `/validate-spec TKT-123 api` | Command |
-| Need manual test cases posted to Jira only | `/create-manual-test-cases TKT-123` then `/post-tests-to-jira TKT-123` | Command |
+| Need manual test cases posted to Jira only | `/create-manual-test-cases TKT-123` then `/post-tests TKT-123` | Command |
 
 ### Flowchart
 
+```mermaid
+flowchart TD
+    START{"What do you<br/>need right now?"}
+
+    START -->|"I have a ticket"| T{"How much do you<br/>want to hand over?"}
+    T -->|"the whole job"| AG["<b>AGENTS</b><br/>@manual-test-generator<br/>then @api- / @ui-automation-test-generator"]
+    T -->|"one specific step"| CM["<b>COMMANDS</b><br/>/fetch-ticket · /analyze-code<br/>/validate-spec · /run-tests"]
+
+    START -->|"no ticket, just<br/>need tests"| N{"From what?"}
+    N -->|"a PR, a curl,<br/>a description"| N1["/generate-api-test<br/>/generate-ui-test"]
+    N -->|"an existing<br/>test file"| N2["/add-test-cases"]
+
+    START -->|"something<br/>is broken"| B{"How much?"}
+    B -->|"one test"| B1["/fix-test<br/><small>paste the error</small>"]
+    B -->|"the whole suite"| B2["/qa<br/><small>run, fix, commit, report</small>"]
+
+    START -->|"I want a report,<br/>not changes"| R{"About what?"}
+    R -->|"what is failing"| R1["/qa-only<br/><small>read-only audit</small>"]
+    R -->|"what is untested"| R2["/audit-coverage"]
+
+    START -->|"I don't know /<br/>something is off"| H["/qa-help<br/><small>inspects your real setup<br/>and tells you the next step</small>"]
+
+    style AG fill:#e7f3ff,stroke:#0366d6,color:#000
+    style CM fill:#fff9e6,stroke:#b8860b,color:#000
+    style H fill:#d4edda,stroke:#28a745,color:#000
 ```
-START: What do you need?
-│
-├── "I have a Jira ticket"
-│   │
-│   ├── "Full automation end-to-end"
-│   │   └── Use AGENTS (@manual-test-generator, then @api-automation-test-generator)
-│   │
-│   └── "Just one specific step"
-│       └── Use COMMANDS (/fetch-ticket, /analyze-code, etc.)
-│
-├── "No Jira ticket, just need tests"
-│   │
-│   ├── "For a specific endpoint or PR"
-│   │   └── /generate-api-test or /generate-ui-test
-│   │
-│   └── "Expand an existing test file"
-│       └── /add-test-cases
-│
-├── "Tests are broken"
-│   │
-│   ├── "One specific test is failing"
-│   │   └── /fix-test
-│   │
-│   └── "Fix everything and report"
-│       └── /qa
-│
-└── "I want a report, not changes"
-    │
-    ├── "What's failing?"
-    │   └── /qa-only
-    │
-    └── "What's not covered?"
-        └── /audit-coverage
-```
+
+**When in doubt, `/qa-help`.** It reads actual files — config, scaffold, environment, tracker
+connection, and per-ticket progress — and prints a personalised checklist rather than generic advice.
 
 ---
 
@@ -1523,7 +1710,7 @@ The Jira ticket `PROJ-456` was updated — new acceptance criteria were added an
 ```
 
 **What `force` resets per agent:**
-- `@manual-test-generator force` resets: `fetch-ticket`, `analyze-code`, `create-manual-test-cases`, `post-tests-to-jira`
+- `@manual-test-generator force` resets: `fetch-ticket`, `analyze-code`, `create-manual-test-cases`, `post-tests`
 - `@api-automation-test-generator force` resets: `create-api-automated-test-cases`, `validate-api-spec`, `run-api-tests`
 - `@ui-automation-test-generator force` resets: `create-ui-automated-test-cases`, `validate-ui-spec`, `run-ui-tests`
 - `@postman-collection-generator force` resets: `generate-postman-collection`
@@ -1628,7 +1815,14 @@ cp .claude/project-config.local.example.json .claude/project-config.local.json
 | `testLimits.bugMaxTests` | `2` | Max automated tests for bug tickets |
 | `testLimits.storyMaxTests` | `8` | Target automated tests per SPEC FILE for story tickets (multi-layer tickets get multiple spec files) |
 | `productCode.rootPaths` | `[]` (set in local config) | Paths to your product source repos for code analysis |
-| `jira.cloudId` | `your-org.atlassian.net` | Jira site (auto-resolved to UUID at runtime) |
+| `productCode.stack` | `generic` | **Set this.** Selects the route/handler/model/permission search patterns from `.claude/stacks/code-patterns.json`. `generic` is noisy — use your real backend framework |
+| `productCode.codePatterns` | `{}` | Per-project regex overrides merged over the stack preset, for in-house route helpers |
+| `ticketSource.type` | `none` | `none` \| `jira` \| `github` \| `azure` \| `clickup` — where tickets are read from and test cases written back to |
+| `ticketSource.jira.cloudId` | `your-org.atlassian.net` | Jira site (auto-resolved to UUID at runtime) |
+| `ticketSource.<src>.tokenEnvVar` | e.g. `AZURE_DEVOPS_PAT` | The **name** of the env var holding the credential — never the credential itself |
+| `dbVerification` | `true` | `false` relaxes the "must assert persistence" gate — a deliberate, documented downgrade |
+
+Full field-by-field walkthrough with worked examples: **[HOW-TO-ADAPT.md](HOW-TO-ADAPT.md)**.
 
 ### Test Tags
 
@@ -1673,7 +1867,7 @@ Each ticket's pipeline progress is tracked in `docs/.ticket-context/TKT-123-pipe
     "fetch-ticket": "done",
     "analyze-code": "done",
     "create-manual-test-cases": "done",
-    "post-tests-to-jira": "done",
+    "post-tests": "done",
     "create-api-automated-test-cases": "pending",
     "create-schema-validation": "pending",
     "validate-api-spec": "pending",

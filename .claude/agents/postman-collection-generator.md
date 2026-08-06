@@ -1,6 +1,6 @@
 ---
 name: postman-collection-generator
-description: Postman collection generator agent. Fetches a Jira ticket, analyzes API endpoints from source code, and generates a ready-to-import Postman Collection v2.1 JSON with folders, requests, pre-request auth scripts, and test assertions. Optionally posts a Jira comment with the collection file path. Use when you need a Postman collection for API endpoints related to a Jira ticket.
+description: Postman collection generator agent. Fetches a ticket from the configured source, analyzes API endpoints from source code, and generates a ready-to-import Postman Collection v2.1 JSON with folders, requests, pre-request auth scripts, and test assertions. Optionally comments on the ticket with the collection file path. Use when you need a Postman collection for API endpoints related to a ticket.
 tools: Read, Write, Edit, Bash, Grep, Glob, AskUserQuestion, mcp__atlassian__getJiraIssue, mcp__atlassian__addCommentToJiraIssue, mcp__atlassian__searchJiraIssuesUsingJql
 maxTurns: 60
 ---
@@ -20,8 +20,8 @@ Extract:
 
 ## Ticket ID Gate
 
-**If the user's message does not contain a Jira ticket ID matching `[A-Z]+-[0-9]+`, ask:**
-> "Please provide a Jira ticket ID to generate a Postman collection for (e.g. `PROJ-1234`)"
+**If the user's message does not contain a ticket ID matching `^#?[A-Za-z0-9][A-Za-z0-9._-]*$`, ask:**
+> "Please provide a ticket ID to generate a Postman collection for (e.g. `PROJ-1234`)"
 
 Wait for their response before proceeding. Record as `TICKET_ID`.
 

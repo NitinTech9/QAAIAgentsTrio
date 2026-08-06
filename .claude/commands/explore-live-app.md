@@ -1,12 +1,12 @@
 # Explore the Live App (capture verified selectors & test data)
 
-You are given a Jira ticket ID: **$ARGUMENTS**
+You are given a ticket ID: **$ARGUMENTS**
 
 Let `TICKET_ID` = the first token of `$ARGUMENTS`.
 
-**If `TICKET_ID` does not match `[A-Z]+-[0-9]+`, stop immediately and tell the user:**
-> "A Jira ticket ID is required. Usage: `/explore-live-app <TICKET-ID>`"
-**Do not proceed.**
+**If `TICKET_ID` is empty or does not match `^#?[A-Za-z0-9][A-Za-z0-9._-]*$`, stop immediately and tell the user:**
+> "A ticket ID is required. Usage: `/explore-live-app <TICKET-ID>`"
+**Do not proceed.** (ID shape is source-specific — `fetch-ticket.md` does the strict per-source check; see `.claude/guides/ticket-sources.md`.)
 
 This command drives the **real running application** in a browser to capture the exact selectors, DOM structure, async/modal behavior, network calls, and error text that the UI spec will need — plus deterministic test data from the DB. Its output is the authoritative input for `create-ui-automated-test-cases.md`. **Never guess a selector from source code when you can read it off the live DOM.**
 

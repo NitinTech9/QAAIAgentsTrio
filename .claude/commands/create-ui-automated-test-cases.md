@@ -1,12 +1,12 @@
 # Create UI Automated Test Cases
 
-You are given a Jira ticket ID: **$ARGUMENTS**
+You are given a ticket ID: **$ARGUMENTS**
 
 Let `TICKET_ID` = the first token of `$ARGUMENTS`.
 
-**If `TICKET_ID` does not match `[A-Z]+-[0-9]+`, stop immediately and tell the user:**
-> "A Jira ticket ID is required. Usage: `/create-ui-automated-test-cases <TICKET-ID>`"
-**Do not proceed.**
+**If `TICKET_ID` is empty or does not match `^#?[A-Za-z0-9][A-Za-z0-9._-]*$`, stop immediately and tell the user:**
+> "A ticket ID is required. Usage: `/create-ui-automated-test-cases <TICKET-ID>`"
+**Do not proceed.** (ID shape is source-specific — `fetch-ticket.md` does the strict per-source check; see `.claude/guides/ticket-sources.md`.)
 
 ## Setup: Read Project Config
 
@@ -111,7 +111,7 @@ Never depend on "whatever the page happens to show". Pick data in `before()` wit
 
 **First check the current git branch** (`git branch --show-current`):
 
-- **If the branch name contains a Jira ticket ID** (`[A-Z]+-[0-9]+`, e.g. `PROJ-17487_Tax_Overrides`): place the spec in the JiraTicket folder, named after the ticket:
+- **If the branch name contains a ticket reference** (`[A-Za-z]{2,}-[0-9]+` e.g. `PROJ-17487_Tax_Overrides`, or a leading issue number e.g. `412-fix-tax-overrides`): place the spec in the ticket folder, named after the ticket:
   ```
   {config.paths.jiraTicketTests}/<TICKET>_<NUMBER>_<FeatureDescription>.cy.js
   ```

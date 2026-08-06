@@ -18,15 +18,79 @@
           "description": "false = suite has no direct DB access; DB-assertion-on-mutation checks are skipped (degraded standard)",
           "default": true
         },
-        "jira": {
+        "ticketSource": {
           "type": "object",
+          "description": "Where tickets are read from and test cases written back to. See .claude/guides/ticket-sources.md. `type` selects the branch; only that source's sub-block needs to be filled in.",
+          "required": ["type"],
+          "additionalProperties": true,
           "properties": {
-            "cloudId": { "type": "string" },
-            "testIssueType": { "type": "string" },
-            "issueLinkType": { "type": "string" },
-            "batchSize": { "type": "integer", "minimum": 1 },
-            "testAssigneeAccountId": { "type": ["string", "null"] }
-          }
+            "type": { "enum": ["jira", "github", "azure", "clickup", "none"] },
+            "none": {
+              "type": "object",
+              "properties": {
+                "outputDir": { "type": "string", "minLength": 1 }
+              }
+            },
+            "jira": { "$ref": "#/definitions/jiraBlock" },
+            "github": {
+              "type": "object",
+              "properties": {
+                "repo": {
+                  "type": "string",
+                  "pattern": "^[^/]+/[^/]+$",
+                  "description": "owner/repo"
+                },
+                "testLabel": { "type": "string" }
+              }
+            },
+            "azure": {
+              "type": "object",
+              "properties": {
+                "organization": { "type": "string" },
+                "project": { "type": "string" },
+                "testWorkItemType": { "type": "string" },
+                "tokenEnvVar": {
+                  "type": "string",
+                  "description": "Name of the env var holding the PAT — never the PAT itself",
+                  "pattern": "^[A-Z][A-Z0-9_]*$"
+                }
+              }
+            },
+            "clickup": {
+              "type": "object",
+              "properties": {
+                "listId": { "type": "string" },
+                "tokenEnvVar": {
+                  "type": "string",
+                  "description": "Name of the env var holding the token — never the token itself",
+                  "pattern": "^[A-Z][A-Z0-9_]*$"
+                }
+              }
+            }
+          },
+          "allOf": [
+            {
+              "if": { "properties": { "type": { "const": "github" } }, "required": ["type"] },
+              "then": { "required": ["github"], "properties": { "github": { "required": ["repo"] } } }
+            },
+            {
+              "if": { "properties": { "type": { "const": "azure" } }, "required": ["type"] },
+              "then": { "required": ["azure"], "properties": { "azure": { "required": ["organization", "project"] } } }
+            },
+            {
+              "if": { "properties": { "type": { "const": "clickup" } }, "required": ["type"] },
+              "then": { "required": ["clickup"], "properties": { "clickup": { "required": ["listId"] } } }
+            },
+            {
+              "if": { "properties": { "type": { "const": "jira" } }, "required": ["type"] },
+              "then": { "required": ["jira"], "properties": { "jira": { "required": ["cloudId"] } } }
+            }
+          ]
+        },
+        "jira": {
+          "allOf": [{ "$ref": "#/definitions/jiraBlock" }],
+          "deprecated": true,
+          "description": "DEPRECATED — moved to ticketSource.jira. Read as a fallback so pre-1.0 configs keep working."
         },
         "paths": {
           "type": "object",
@@ -94,7 +158,27 @@
           "type": "object",
           "properties": {
             "rootPaths": { "type": "array", "items": { "type": "string" } },
-            "sourceGlobs": { "type": "array", "items": { "type": "string" } },
+            "stack": {
+              "enum": ["go-chi", "go-gin", "express", "nestjs", "django", "fastapi", "rails", "spring-boot", "laravel", "dotnet", "generic"],
+              "description": "Key into .claude/stacks/code-patterns.json — selects the route/handler/model/roleGate search patterns for /analyze-code. Must match a top-level key in that file (/qa-selftest checks this).",
+              "default": "generic"
+            },
+            "codePatterns": {
+              "type": "object",
+              "description": "Per-project regex overrides merged over the stack preset, field by field. Empty arrays mean 'use the preset'.",
+              "additionalProperties": true,
+              "properties": {
+                "route": { "type": "array", "items": { "type": "string" } },
+                "handler": { "type": "array", "items": { "type": "string" } },
+                "model": { "type": "array", "items": { "type": "string" } },
+                "roleGate": { "type": "array", "items": { "type": "string" } }
+              }
+            },
+            "sourceGlobs": {
+              "type": "array",
+              "items": { "type": "string" },
+              "description": "Empty = inherit from the stack preset"
+            },
             "excludeDirs": { "type": "array", "items": { "type": "string" } }
           }
         },
@@ -111,6 +195,16 @@
     }
   },
   "definitions": {
+    "jiraBlock": {
+      "type": "object",
+      "properties": {
+        "cloudId": { "type": "string", "minLength": 1 },
+        "testIssueType": { "type": "string" },
+        "issueLinkType": { "type": "string" },
+        "batchSize": { "type": "integer", "minimum": 1 },
+        "testAssigneeAccountId": { "type": ["string", "null"] }
+      }
+    },
     "authBlock": {
       "type": "object",
       "properties": {

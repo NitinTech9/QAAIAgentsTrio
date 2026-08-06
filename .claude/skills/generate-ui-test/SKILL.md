@@ -50,7 +50,7 @@ Map each feature area to its module folder — keep this table in sync with your
 
 ## FILE NAMING
 
-**Branch check first:** if the current git branch name contains a Jira ticket ID (`[A-Z]+-[0-9]+`), place the spec in `cypress/e2e/JiraTicket/<TICKET>_<NUMBER>_<FeatureDescription>.cy.js` (e.g. `PROJ_17487_OverrideTaxCancellation.cy.js`). Otherwise:
+**Branch check first:** if the current git branch name contains a ticket reference (`[A-Za-z]{2,}-[0-9]+`, or a leading issue number like `412-`), place the spec in `cypress/e2e/JiraTicket/<TICKET>_<NUMBER>_<FeatureDescription>.cy.js` (e.g. `PROJ_17487_OverrideTaxCancellation.cy.js`). Otherwise:
 
 `[NN]-[action-description].cy.js`  
 No HTTP method prefix for UI tests. Short verb-noun description, kebab-case.

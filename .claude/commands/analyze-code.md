@@ -1,12 +1,12 @@
 # Analyze Source Code for Ticket
 
-You are given a Jira ticket ID: **$ARGUMENTS**
+You are given a ticket ID: **$ARGUMENTS**
 
 Let `TICKET_ID` = the first token of `$ARGUMENTS`.
 
-**If `TICKET_ID` does not match `[A-Z]+-[0-9]+`, stop immediately and tell the user:**
-> "A Jira ticket ID is required. Usage: `/analyze-code <TICKET-ID> [pr:<PR-NUMBER>]`"
-**Do not proceed.**
+**If `TICKET_ID` is empty or does not match `^#?[A-Za-z0-9][A-Za-z0-9._-]*$`, stop immediately and tell the user:**
+> "A ticket ID is required. Usage: `/analyze-code <TICKET-ID> [pr:<PR-NUMBER>]`"
+**Do not proceed.** (ID shape is source-specific — `fetch-ticket.md` does the strict per-source check; see `.claude/guides/ticket-sources.md`.)
 
 ## Scan Mode Detection
 
@@ -23,6 +23,21 @@ Read `.claude/project-config.json` and extract all `project.paths.*` values and 
 
 **Validation:** If `productCode.rootPaths` is empty after merging, stop immediately:
 > "No product source code paths configured. Copy `.claude/project-config.local.example.json` to `.claude/project-config.local.json` and set your local repo paths."
+
+## Setup: Resolve Code Search Patterns
+
+The regexes used to find routes, handlers, models, and role checks are **stack-specific and configured** — they are never hardcoded in this file. Resolve them once, here:
+
+1. Read `config.productCode.stack` → `STACK` (default `"generic"` if absent).
+2. Read `.claude/stacks/code-patterns.json` and take the entry keyed by `STACK`.
+   - If `STACK` is not a key in that file, stop: `❌ productCode.stack "<STACK>" is not defined in .claude/stacks/code-patterns.json. Valid values: <list the non-underscore top-level keys>.`
+3. Merge `config.productCode.codePatterns` **over** the preset, field by field: for each of `route`, `handler`, `model`, `roleGate`, a non-empty array in the project config **replaces** the preset's array; an empty or absent array keeps the preset's. Call the result `PATTERNS`.
+4. Resolve globs: if `config.productCode.sourceGlobs` is non-empty use it, otherwise use the preset's `sourceGlobs`. Call the result `SOURCE_GLOBS` — every Grep/Glob in this file uses it.
+
+**If `STACK = "generic"`**, the patterns are deliberately broad and will produce noisy, low-confidence results. Say so in the analysis output and add:
+> ⚠️ `productCode.stack` is `generic` — route and role-gate discovery is unreliable. Set it to your backend framework in `.claude/project-config.json` (valid values are the keys of `.claude/stacks/code-patterns.json`) and re-run for accurate results.
+
+**Never** edit this command file to add a pattern for a new framework. Add a key to `.claude/stacks/code-patterns.json` (shared, upgradeable) or set `productCode.codePatterns` (project-local). Editing this file means losing your change on the next framework upgrade.
 
 ## Check Pipeline State
 
@@ -47,7 +62,7 @@ Read `{config.paths.ticketContext}/TICKET_ID.json`. Focus on: summary, descripti
 - **READ ONLY** — you may only use Read, Grep, and Glob tools against the product repos. You MUST NOT use Edit, Write, MultiEdit, or Bash to modify any file there under any circumstance.
 - **No sensitive files** — NEVER read files matching these patterns, even if they appear relevant:
   `.env`, `*.env`, `.env.*`, `config.toml`, `secrets.toml`, `*.pem`, `*.key`, `*.p12`, `*.pfx`, `id_rsa`, `id_ed25519`, `*.credentials`, `credentials.json`, `database.yml`, `database.yaml`, any file with `secret` or `password` or `passwd` in its name.
-- **Only source code** — read only files matching `config.productCode.sourceGlobs` (`.go`, `.js`, `.jsx`, `.ts`, `.tsx`, `.sql`, etc.). Skip configuration, infrastructure, and data files.
+- **Only source code** — read only files matching `SOURCE_GLOBS` (resolved above from the stack preset). Skip configuration, infrastructure, and data files.
 - **Skip excluded dirs** — never recurse into dirs listed in `config.productCode.excludeDirs` (`node_modules`, `.git`, `dist`, `build`, `coverage`, `vendor`, etc.).
 
 If a Grep or Glob result includes a sensitive file path, skip it silently — do not read it.
@@ -97,7 +112,7 @@ Fetch the changed files from the PR to narrow the search scope:
 gh pr view <PR_NUMBER> --json files --jq '.files[].path'
 ```
 
-Filter the file list to only source files matching `config.productCode.sourceGlobs` (exclude non-source files like configs, docs, etc.). Use these files as the **exclusive scope** — only read and analyze files that appear in the PR diff. This is faster and more focused than a full scan.
+Filter the file list to only source files matching `SOURCE_GLOBS` (exclude non-source files like configs, docs, etc.). Use these files as the **exclusive scope** — only read and analyze files that appear in the PR diff. This is faster and more focused than a full scan.
 
 **Default file limit: 10.** If the filtered source file count exceeds 10, **do not silently skip files.** Instead, alert the user:
 
@@ -136,7 +151,7 @@ Use the diff to understand what specifically changed — new routes, modified va
 
 Using keywords derived from the ticket summary and description, search the actual application source code at each path in `{config.productCode.rootPaths}`:
 
-1. **Grep** for route/endpoint definitions matching ticket keywords (e.g. `router.get`, `addAuthAPIRoute`, `chi.URLParam`, `http.NewRequest`) across each product root — exclude dirs listed in `config.productCode.excludeDirs`
+1. **Grep** for route/endpoint definitions matching ticket keywords, using every regex in `PATTERNS.route` across each product root — exclude dirs listed in `config.productCode.excludeDirs`
 2. **Identify the files** that define the relevant endpoints or UI components (at most 5 files per repo)
 3. **Read those files** to extract:
    - Exact route path and HTTP method
@@ -145,8 +160,8 @@ Using keywords derived from the ticket summary and description, search the actua
    - Business logic and edge cases in the handler/service
    - Any middleware, guards, or permission checks applied
    - Database models or schema definitions referenced
-4. **Grep for related service/business logic** files if the controller delegates to a service layer — read the relevant methods
-5. **Grep for model/schema definitions** referenced by the handler to understand data shape
+4. **Grep for related service/business logic** files if the controller delegates to a service layer — using `PATTERNS.handler` plus ticket keywords — and read the relevant methods
+5. **Grep for model/schema definitions** referenced by the handler, using `PATTERNS.model`, to understand data shape
 
 Use this product code analysis as the **primary source of truth** for what to test — not just the Jira description. The actual code may reveal edge cases, validations, and error paths that the ticket doesn't mention.
 
@@ -160,7 +175,7 @@ Save to `{config.paths.ticketContext}/TICKET_ID-analysis.md`:
 - Request/response structure — sourced from actual product code
 - Business logic edge cases and validation rules found in product code
 - Middleware/auth guards applied to the endpoint
-- **Role gating** — explicitly state whether the feature is role-gated or not. Search the touched frontend/backend code for role checks (`Roles.UserHasAnyRole`, `hstore.has(...roles...)`, `user.HasRole`, `roles={[...]}` on frontend routes, role lists on `addAuthAPIRoute`). If gated: name the exact roles and every screen/endpoint affected (this triggers the role-matrix coverage in the UI test generator). If not gated: write "Role gating: none — test with the primary user".
+- **Role gating** — explicitly state whether the feature is role-gated or not. Search the touched frontend/backend code using every regex in `PATTERNS.roleGate`, plus `roles={[...]}` on frontend routes. If gated: name the exact roles and every screen/endpoint affected (this triggers the role-matrix coverage in the UI test generator). If not gated: write "Role gating: none — test with the primary user".
 - Available DB tasks for test data setup
 - Available custom commands to reuse
 - Page Object class(es) discovered (if any) and their method signatures

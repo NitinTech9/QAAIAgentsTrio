@@ -1,0 +1,99 @@
+{
+  "_comment": "Stack presets for /analyze-code. project-config.json sets productCode.stack to one of these keys; analyze-code.md reads the matching entry and uses these regexes with the Grep tool. Override any field per-project via productCode.codePatterns (merged over the preset). Add a stack by adding a key here — never by editing a command file.",
+  "_fields": {
+    "route": "regexes that locate HTTP route/endpoint registrations",
+    "handler": "regexes that locate the function handling a route",
+    "model": "regexes that locate persistence models / schema definitions",
+    "roleGate": "regexes that locate authorization / role checks — drives the role-matrix coverage in the UI generator",
+    "sourceGlobs": "default file extensions to search for this stack"
+  },
+
+  "go-chi": {
+    "route": ["addAuthAPIRoute", "addAPIRoute", "r\\.(Get|Post|Put|Patch|Delete)\\(", "chi\\.URLParam"],
+    "handler": ["func\\s+\\w*Handler", "func\\s+\\(\\w+\\s+\\*?\\w+\\)\\s+\\w+\\(w\\s+http\\.ResponseWriter"],
+    "model": ["type\\s+\\w+\\s+struct", "db:\"", "gorm:\""],
+    "roleGate": ["Roles\\.UserHasAnyRole", "hstore\\.has", "user\\.HasRole", "RequireRole"],
+    "sourceGlobs": ["*.go", "*.sql"]
+  },
+
+  "go-gin": {
+    "route": ["router\\.(GET|POST|PUT|PATCH|DELETE)\\(", "group\\.(GET|POST|PUT|PATCH|DELETE)\\(", "c\\.Param\\("],
+    "handler": ["func\\s+\\w+\\(c\\s+\\*gin\\.Context\\)"],
+    "model": ["type\\s+\\w+\\s+struct", "gorm:\""],
+    "roleGate": ["AuthRequired", "RequireRole", "middleware\\.Auth"],
+    "sourceGlobs": ["*.go", "*.sql"]
+  },
+
+  "express": {
+    "route": ["router\\.(get|post|put|patch|delete)\\(", "app\\.(get|post|put|patch|delete)\\(", "req\\.params"],
+    "handler": ["\\((req|request),\\s*(res|response)", "async\\s*\\((req|request),"],
+    "model": ["mongoose\\.Schema", "sequelize\\.define", "@Entity\\(", "prisma\\."],
+    "roleGate": ["requireRole", "authorize\\(", "checkPermission", "passport\\.authenticate", "isAuthenticated"],
+    "sourceGlobs": ["*.js", "*.jsx", "*.ts", "*.tsx", "*.sql", "*.prisma"]
+  },
+
+  "nestjs": {
+    "route": ["@(Get|Post|Put|Patch|Delete)\\(", "@Controller\\(", "@Param\\("],
+    "handler": ["@(Get|Post|Put|Patch|Delete)\\([^)]*\\)\\s*\\n\\s*(async\\s+)?\\w+\\("],
+    "model": ["@Entity\\(", "@Schema\\(", "@Column\\("],
+    "roleGate": ["@Roles\\(", "@UseGuards\\(", "RolesGuard", "AuthGuard"],
+    "sourceGlobs": ["*.ts", "*.sql"]
+  },
+
+  "django": {
+    "route": ["path\\(", "re_path\\(", "urlpatterns", "router\\.register\\("],
+    "handler": ["def\\s+\\w+\\(request", "class\\s+\\w+(View|ViewSet)\\(", "@api_view"],
+    "model": ["class\\s+\\w+\\(models\\.Model\\)", "models\\.(CharField|ForeignKey|IntegerField)"],
+    "roleGate": ["@permission_classes", "@login_required", "@user_passes_test", "has_perm", "IsAuthenticated"],
+    "sourceGlobs": ["*.py", "*.sql"]
+  },
+
+  "fastapi": {
+    "route": ["@(app|router)\\.(get|post|put|patch|delete)\\(", "APIRouter\\("],
+    "handler": ["async\\s+def\\s+\\w+\\(", "def\\s+\\w+\\(.*Depends\\("],
+    "model": ["class\\s+\\w+\\(BaseModel\\)", "class\\s+\\w+\\(Base\\)", "Column\\("],
+    "roleGate": ["Depends\\(get_current_user", "Security\\(", "require_role"],
+    "sourceGlobs": ["*.py", "*.sql"]
+  },
+
+  "rails": {
+    "route": ["resources\\s+:", "(get|post|put|patch|delete)\\s+['\"]", "namespace\\s+:"],
+    "handler": ["def\\s+(index|show|create|update|destroy)", "class\\s+\\w+Controller"],
+    "model": ["class\\s+\\w+\\s*<\\s*(ApplicationRecord|ActiveRecord::Base)", "belongs_to\\s+:", "has_many\\s+:"],
+    "roleGate": ["before_action\\s+:authenticate", "authorize\\s+", "can\\?\\(", "current_user\\."],
+    "sourceGlobs": ["*.rb", "*.erb", "*.sql"]
+  },
+
+  "spring-boot": {
+    "route": ["@(Get|Post|Put|Patch|Delete)Mapping", "@RequestMapping", "@PathVariable"],
+    "handler": ["@RestController", "@Controller", "public\\s+ResponseEntity"],
+    "model": ["@Entity", "@Table\\(", "@Column\\("],
+    "roleGate": ["@PreAuthorize", "@Secured", "hasRole\\(", "@RolesAllowed"],
+    "sourceGlobs": ["*.java", "*.kt", "*.sql"]
+  },
+
+  "laravel": {
+    "route": ["Route::(get|post|put|patch|delete)\\(", "Route::(apiResource|resource)\\("],
+    "handler": ["public\\s+function\\s+(index|show|store|update|destroy)", "class\\s+\\w+Controller"],
+    "model": ["class\\s+\\w+\\s+extends\\s+Model", "protected\\s+\\$fillable", "Schema::create"],
+    "roleGate": ["middleware\\(['\"]auth", "Gate::", "->can\\(", "@can\\("],
+    "sourceGlobs": ["*.php", "*.sql"]
+  },
+
+  "dotnet": {
+    "route": ["\\[Http(Get|Post|Put|Patch|Delete)\\]", "\\[Route\\(", "MapControllerRoute", "app\\.Map(Get|Post|Put|Delete)"],
+    "handler": ["\\[ApiController\\]", "public\\s+async\\s+Task<IActionResult>"],
+    "model": ["public\\s+class\\s+\\w+", "DbSet<", "\\[Table\\("],
+    "roleGate": ["\\[Authorize", "User\\.IsInRole", "RequireClaim"],
+    "sourceGlobs": ["*.cs", "*.sql"]
+  },
+
+  "generic": {
+    "_comment": "Fallback when the stack is unknown. Broad and noisy on purpose — /analyze-code reports low confidence and asks the user to set productCode.stack.",
+    "route": ["(get|post|put|patch|delete)\\s*\\(\\s*['\"]/", "route", "endpoint", "@(Get|Post|Put|Delete)"],
+    "handler": ["handler", "controller", "def\\s+\\w+\\(", "function\\s+\\w+\\("],
+    "model": ["schema", "model", "entity", "CREATE TABLE"],
+    "roleGate": ["role", "permission", "authorize", "authenticated"],
+    "sourceGlobs": ["*.go", "*.js", "*.jsx", "*.ts", "*.tsx", "*.py", "*.rb", "*.java", "*.cs", "*.php", "*.sql"]
+  }
+}

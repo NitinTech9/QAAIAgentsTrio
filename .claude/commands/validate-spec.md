@@ -3,7 +3,7 @@
 You are given: **$ARGUMENTS** — `<TICKET-ID> [api|ui]`
 
 Parse `$ARGUMENTS`:
-- `TICKET_ID` = first token (must match `[A-Z]+-[0-9]+`)
+- `TICKET_ID` = first token (must match `^#?[A-Za-z0-9][A-Za-z0-9._-]*$` — see `.claude/guides/ticket-sources.md`)
 - `SPEC_TYPE` = second token — must be `api` or `ui`. If missing or invalid, **stop** and ask the user:
   > "Usage: `/validate-spec <TICKET-ID> <api|ui>` — e.g. `/validate-spec PROJ-1234 api`"
 
