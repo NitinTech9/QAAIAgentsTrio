@@ -80,5 +80,40 @@ const envOk = tmpSpec("env-ok.cy.js", `it("[T-1] TC", { tags: ["@PR"] }, () => {
 const eo = runCli([envOk]);
 check("no-credentials does NOT flag Cypress.env(...) reads (the correct pattern)", !eo.stdout.includes("[no-credentials]"), eo.stdout);
 
+// 5. stripComments — direct unit assertions (string-awareness is load-bearing:
+//    a naive stripper mangles `https://` URLs and breaks every downstream gate)
+const { stripComments } = require(path.join(ROOT, "scripts/gates/lib.js"));
+const sc = stripComments;
+check("stripComments: https:// URL in string survives unchanged", sc('url: "https://x/y",') === 'url: "https://x/y",');
+check("stripComments: // comment becomes spaces, same length & lines", (() => { const r = sc("a; // b\nc;"); return r === "a;     \nc;" && r.length === "a; // b\nc;".length; })());
+check("stripComments: /* multi\\nline */ blanks, newlines preserved", (() => { const r = sc("a;/* x\ny */b;"); return r.split("\n").length === 2 && !/x|y/.test(r) && /a;/.test(r) && /b;/.test(r) && r.length === "a;/* x\ny */b;".length; })());
+check("stripComments: comment marker inside a string survives", sc('s = "a // b";') === 's = "a // b";');
+check("stripComments: template literal with ${} and // survives", sc("t = `tpl ${x} // y`;") === "t = `tpl ${x} // y`;");
+check("stripComments: regex literal with escaped slashes survives", sc("r = /regex\\/\\//; f();") === "r = /regex\\/\\//; f();");
+
+// 6. Comment-bypass regression fixtures — both directions per gate
+const cmtDb = tmpSpec("cmt-db.cy.js", `// Persistence is proven via cy.task("queryDb", "select 1") in real specs.\nit("[T-1] TC", { tags: ["@PR"] }, () => { cy.api({ method: "POST", url: "/x", failOnStatusCode: false }).then((r) => { expect(r.status).to.equal(201); }); });` + UNAUTH);
+const cdb = runCli([cmtDb]);
+check("db-assertion: queryDb mention ONLY in a comment still flags (bypass dead)", cdb.status === 1 && cdb.stdout.includes("[db-assertion]"), cdb.stdout);
+
+const cmtAc = tmpSpec("cmt-ac.cy.js", `it("[T-1] TC", { tags: ["@PR"] }, () => { cy.api({ url: "/x", failOnStatusCode: false }).then((r) => { expect(r.status).to.equal(200); }); });\n// it("unauth", () => { cy.clearCookies(); cy.api({ url: "/x" }).then((r) => expect(r.status).to.be.oneOf([401, 403])); });`);
+check("access-control: commented-out unauth test still flags", runCli([cmtAc]).stdout.includes("[access-control]"));
+
+const cmt5xx = tmpSpec("cmt-5xx.cy.js", `// never write expect(r.status).to.equal(500) — a 5xx must fail the test\nit("[T-1] TC", { tags: ["@PR"] }, () => { cy.api({ url: "/x", failOnStatusCode: false }).then((r) => { expect(r.status).to.equal(200); }); });` + UNAUTH);
+check("no-5xx: to.equal(500) quoted in a comment does NOT flag", !runCli([cmt5xx]).stdout.includes("[no-5xx]"), runCli([cmt5xx]).stdout);
+
+const cmtAmb = tmpSpec("cmt-amb.cy.js", `// don't use oneOf([200, 404]) — assert the precise code\nit("[T-1] TC", { tags: ["@PR"] }, () => { cy.api({ url: "/x", failOnStatusCode: false }).then((r) => { expect(r.status).to.equal(200); }); });` + UNAUTH);
+check("no-ambiguous: oneOf([200,404]) quoted in a comment does NOT flag", !runCli([cmtAmb]).stdout.includes("[no-ambiguous]"), runCli([cmtAmb]).stdout);
+
+const cmtCred = tmpSpec("cmt-cred.cy.js", `// never hardcode credentials like password: "hunter2secret"\nit("[T-1] TC", { tags: ["@PR"] }, () => { cy.api({ url: "/x", body: { password: Cypress.env("LOGIN_PASSWORD") }, failOnStatusCode: false }).then((r) => { expect(r.status).to.equal(200); }); });` + UNAUTH);
+check("no-credentials: literal secret quoted in a comment does NOT flag", !runCli([cmtCred]).stdout.includes("[no-credentials]"), runCli([cmtCred]).stdout);
+
+const h2 = runCli([hatch]);
+check("no-ambiguous: // status-ambiguous escape hatch STILL honored after stripping", h2.status === 0, h2.stdout);
+
+const absUrl = tmpSpec("abs-url.cy.js", `it("[T-1] TC", { tags: ["@PR"] }, () => { cy.api({ method: "GET", url: "https://jsonplaceholder.typicode.com/posts", failOnStatusCode: false }).then((r) => { expect(r.status).to.equal(200); }); });` + UNAUTH);
+const au = runCli([absUrl]);
+check("absolute https:// URL spec: verdict unchanged (clean)", au.status === 0, au.stdout);
+
 console.log(failures ? `\n${failures} assertion(s) FAILED` : "\nall gate assertions passed");
 process.exit(failures ? 1 : 0);

@@ -179,7 +179,7 @@ git add -A
 git commit -m "<commit message>"
 ```
 - **Commit message:** reuse the PR title (without the trailing period), e.g. `[PROJ-17309] Add subscription cancellation export automation`. For a single logical change one commit is correct; if the diff spans clearly separate concerns, tell the user you recommend splitting and let them decide.
-- **The pre-commit hook runs automatically here** (if installed via `npm run hooks:install`). It checks staged `*.cy.js` for syntax (CJS or ESM) + the no-5xx rule + no NEW ambiguous 2xx/4xx `oneOf` on added lines (escape hatch: `// status-ambiguous: <reason>`), and validates touched JSON. **If the hook fails, the commit is rejected — stop, show the hook output, and do NOT push.** Fix the reported issues and re-run `/pr`. Do not use `--no-verify` to bypass it.
+- **The pre-commit hook runs automatically here** (if installed via `npm run hooks:install`). It runs the shared qa-gates scanners on staged specs plus JSON validity — the rules and escape hatch live in `.claude/protocols/status-assertions.md`, not here. **If the hook fails, the commit is rejected — stop, show the hook output, and do NOT push.** Fix the reported issues and re-run `/pr`. Do not use `--no-verify` to bypass it.
 - **Do NOT add a `Co-Authored-By` or "Generated with" trailer to the commit message.**
 
 ## GitHub PR Creation Commands

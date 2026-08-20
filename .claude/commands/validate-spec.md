@@ -34,7 +34,7 @@ Scan for unresolved placeholders (`[NN]`, `[endpoint]`, `[Feature Name]`, `<reso
 ### Check 4: Tags on Every it()
 ENFORCED via qa-gates (`tags-present`). Auto-fix by adding `{ tags: ["@Regression"] }` as a safe default, then re-run.
 ### Check 5: Unauthenticated / Access-Control Test Present
-ENFORCED via qa-gates (`access-control`). API: an `it()` must assert 401/403 AND call `cy.clearCookies()` in that same test (the cookie jar otherwise still sends the session cookie — a fake unauth test is flagged). UI: a test must assert redirect to the login path. Auto-fix by appending the standard test, then re-run.
+ENFORCED via qa-gates (`access-control`) — the fake-unauthenticated trap and rationale are in `.claude/protocols/status-assertions.md`. Auto-fix by appending the standard test, then re-run.
 ### Check 6: failOnStatusCode: false on cy.api() (API only)
 ENFORCED via qa-gates (`fail-on-status`). Auto-fix by adding it, then re-run.
 ### Check 7: No Hardcoded Credentials
@@ -42,9 +42,9 @@ ENFORCED via qa-gates (`no-credentials`). Literal passwords/secrets/tokens/api-k
 ### Check 8: Syntax
 ENFORCED via qa-gates (`syntax`, a `node --check` wrapper).
 ### Check 9: No 5xx Accepted in Status Assertions — **HARD GATE**
-ENFORCED via qa-gates (`no-5xx`). A test must be able to fail; a 5xx means the app broke and the test must surface it.
+ENFORCED via qa-gates (`no-5xx`) per `.claude/protocols/status-assertions.md`.
 ### Check 9b: No Ambiguous 2xx/4xx oneOf — **HARD GATE**
-ENFORCED via qa-gates (`no-ambiguous`). Escape hatch: `// status-ambiguous: <reason>` on the offending line.
+ENFORCED via qa-gates (`no-ambiguous`) per `.claude/protocols/status-assertions.md` (escape hatch documented there).
 ### Check 10: Schema Validation Exists for 200-JSON Endpoints (API only) — ADVISED (needs judgment)
 For each endpoint this spec asserts a 200 JSON body on, a matching schema spec must exist under the schema-validation folder; auto-remediate by executing `.claude/commands/create-schema-validation.md` with `TICKET_ID`, noting non-JSON endpoints (PDF/CSV/307) as exempt.
 ### Check 11: DB Assertion on Every Mutation — **HARD GATE**

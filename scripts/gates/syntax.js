@@ -9,6 +9,7 @@ const { spawnSync } = require("child_process");
 // so non-.js files are staged through a temp .js copy first.
 module.exports = {
     name: "syntax",
+    source: "raw", // node --check runs on the real file — stripping would be wrong here
     check(src, ctx) {
         let target = ctx.file;
         let tmp = null;

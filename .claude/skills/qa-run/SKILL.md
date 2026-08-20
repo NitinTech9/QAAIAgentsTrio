@@ -254,23 +254,7 @@ CYPRESS_ENV=local npx cypress run \
   2>&1 | tail -30
 ```
 
-Compute QA Health Score (0–100):
-
-| Dimension | Weight | Scoring |
-|---|---|---|
-| Pass Rate | 30% | (passed / total) × 100 |
-| Coverage | 25% | (tested endpoints / swagger endpoints) × 100 |
-| Auth Tests | 15% | % of modules with a 401/403 unauthenticated test |
-| Negative Tests | 15% | % of modules with at least one `@Regression` case |
-| DB Verification | 10% | % of POST/PUT tests that verify DB state after call |
-| Cleanup | 5% | % of create tests with `after()` cleanup |
-
-**Score bands:**
-- 90–100: Ship-ready
-- 75–89: Good — minor gaps
-- 60–74: Needs work before release
-- 40–59: High risk
-- 0–39: Critical
+Compute the QA Health Score per the **canonical dimensions/weights table and score bands** in `.claude/skills/qa-run/templates/qa-report-template.md` — never restate them here (they diverged once already).
 
 If `project.dbVerification` is `false`, drop the DB Verification dimension and redistribute its 10% weight proportionally; do the same for Coverage when no swagger is configured.
 

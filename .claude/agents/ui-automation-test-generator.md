@@ -159,7 +159,7 @@ Pipeline key: `run-ui-tests`
 
 ## Final Output
 
-**Run metrics (for tuning maxTurns from data instead of guessing):** append one entry to `{config.paths.knowledge}/agent-run-history.json` (create `{"runs": []}` if missing; validate JSON after writing): `{"agent": "<this agent>", "ticketId": TICKET_ID, "startedAt": RUN_STARTED_AT, "finishedAt": "<now ISO>", "wallClockMs": <difference>, "stepsCompleted": <count of steps set to done this run>, "turnsUsed": null}`. The harness does not expose the model-turn count to the agent, so `turnsUsed` stays `null` — wall-clock and step count are the honest proxies until the harness provides it.
+**Run metrics:** append this run's entry per `.claude/protocols/state-and-locks.md` → "Run metrics" (using `RUN_STARTED_AT` from Setup).
 
 
 After all steps complete, provide a summary:

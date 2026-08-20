@@ -68,6 +68,8 @@ jobs:
             done
           done
           grep -q 'renameSync' .claude/protocols/state-and-locks.md || { echo "✗ atomic snippet missing from state-and-locks.md"; fail=1; }
+          grep -q 'protocols/status-assertions.md' .claude/commands/validate-spec.md || { echo "✗ validate-spec.md does not reference protocols/status-assertions.md"; fail=1; }
+          grep -q 'status-ambiguous' .claude/protocols/status-assertions.md && grep -q 'clearCookies' .claude/protocols/status-assertions.md || { echo "✗ status-assertions.md lost the escape hatch or fake-unauth trap"; fail=1; }
           exit $fail
 
       - name: Knowledge audit surfaces stale ticket-less suppressions (selftest)

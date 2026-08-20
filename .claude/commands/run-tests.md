@@ -109,7 +109,7 @@ Run via Bash with `timeout` of `TIMEOUT_MS / 1000` seconds (use the Bash `timeou
 7. **Timing issues** — add `cy.wait()` or increase `defaultCommandTimeout` in `cypress.config.js`, re-run
 8. **Typed value lost / value stays "0" on a controlled React input** — replace `clear().type()` with the one-shot native setter + `input` event pattern (keep the setter helper in the relevant Page Object), re-run
 9. **Unexpected app modal/toast blocking the flow** (e.g. "Confirm Cancel Date Old") — handle it conditionally in the Page Object, re-run
-10. **Re-validate any spec you edited during a retry** — before re-running, re-check the modified spec against the no-5xx / no-ambiguous-`oneOf` / DB-assertion-on-mutation rules (per `validate-spec.md`). An auto-fix must never reintroduce a banned assertion that already passed validation, or "make it green" by weakening a status assertion.
+10. **Re-validate any spec you edited during a retry** — before re-running, re-run `node scripts/gates/index.js` on it (rules: `.claude/protocols/status-assertions.md`). An auto-fix must never reintroduce a banned assertion that already passed validation, or "make it green" by weakening a status assertion.
 11. After 3 failed retries, proceed with the failure details — do not retry further. If the failure is a genuine app defect (not a test/selector/env issue), say so explicitly in the results rather than masking it — never soften an assertion to force a pass.
 
 ### Capture Results

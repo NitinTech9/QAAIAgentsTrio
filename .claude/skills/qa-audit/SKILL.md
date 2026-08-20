@@ -141,23 +141,7 @@ N days old, tracked by TICKET" — never as "never in scope". Rules: `.claude/pr
 
 ### Phase 5 — Score Health
 
-Compute the **QA Health Score** (0–100) across 6 dimensions:
-
-| Dimension | Weight | How to Score |
-|---|---|---|
-| **Pass Rate** | 30% | (passed / total) × 100 |
-| **Coverage** | 25% | (tested endpoints / swagger endpoints) × 100 |
-| **Auth Tests** | 15% | % of modules that have an unauthenticated 401/403 test |
-| **Negative Tests** | 15% | % of modules that have at least one `@Regression` case |
-| **DB Verification** | 10% | % of mutating tests (POST/PUT) that verify DB state after call |
-| **Cleanup** | 5% | % of create tests that have an `after()` cleanup block |
-
-**Score bands:**
-- 90–100: Ship-ready
-- 75–89: Good — minor gaps
-- 60–74: Needs work before release
-- 40–59: High risk — significant gaps
-- 0–39: Critical — not safe to rely on
+Compute the QA Health Score per the **canonical dimensions/weights table and score bands** in `.claude/skills/qa-run/templates/qa-report-template.md` — never restate them here (they diverged once already).
 
 If `project.dbVerification` is `false`, drop the DB Verification dimension and redistribute its 10% weight proportionally across the rest; do the same for Coverage when no swagger is configured.
 
