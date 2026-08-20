@@ -17,6 +17,11 @@ You set up a brand-new QA automation project so the agents and skills in this fr
 
 If `$ARGUMENTS` contains `demo`, skip the interview entirely and set up a try-it-in-10-minutes sandbox against a public API — no backend, no Jira, no credentials:
 
+**Existing-config guard (run BEFORE any demo write):** if `.claude/project-config.json` exists with non-default values (`name` ≠ `"YourProject"`, or `ticketSource.type` ≠ `"none"`, or a real `app.primaryBaseUrl`, or a non-null `auth.primary.loginCommand`), demo mode must NOT silently rewrite it — that would drop the configured tracker/auth values, and since `cypress.config.js` already exists Golden Rule 1 would skip it, leaving `baseUrl` pointed at the real backend while the demo specs expect the public API (the demo could not even run). Ask (AskUserQuestion):
+- **Coexist (Recommended)** — write ONLY the demo specs + seeded DEMO-1 ticket files; config and `cypress.config.js` untouched. Write the demo specs with **absolute URLs** (`cy.api({ url: "https://jsonplaceholder.typicode.com/posts", ... })`) so they run under any baseUrl.
+- **Convert to demo** — rewrite the config for the sandbox, but FIRST print the exact values being replaced (`dbVerification`, `ticketSource.type`, `app.primaryBaseUrl`, `auth.primary.loginCommand`, `ticketSource.jira.cloudId`) and wait for confirmation. Also print the `cypress.config.js` baseUrl change the user must make by hand (Golden Rule 1 forbids overwriting it).
+- **Cancel.**
+
 - Presets: `FRAMEWORK = cypress` (or `playwright` if also passed), `PRIMARY_URL = https://jsonplaceholder.typicode.com`, `DB = false`, `JIRA_CLOUD_ID = null`.
 - Scaffold per Phase 2 with these adjustments: no login stub (the demo API is unauthenticated — write `auth.primary.loginCommand: null` in Phase 3 and set `dbVerification: false`), no `pg`, no env-file DB keys.
 - **Sample specs** — one spec per endpoint (the demo is the first pattern people copy, so it must follow the standard), each `it()` titled `Test Case NN: [DEMO-1] …` per the framework template:
@@ -216,7 +221,7 @@ module.exports = {
 
 **Knowledge seeds** in `cypress/knowledge/` — create each with an empty-but-valid shape: `api-catalog.json` (`{"modules": {}}`), `api-behavior-notes.json` (`{"known_500_bugs": [], "endpoint_quirks": [], "auth_behavior": []}`), `api-dependency-map.json` (`{"modules": {}}`), `failure-patterns.json` (`{"patterns": []}`), `test-run-history.json` (`{"runs": []}`), `tagging-strategy.json` (`{"@PR": "pre-merge gate", "@Smoke": "post-deploy sanity", "@Regression": "full pass"}`), plus a `_README.md` one-liner pointing at CLAUDE.md's knowledge-base protocol.
 
-**Sample spec** `cypress/e2e/API/health-module/01-get-health.cy.js` — a `@PR @Smoke` GET on `/api/health` (or `/`) following the template skeleton, so the very first run proves the wiring, **plus one `@Regression` negative case** (e.g. a bogus path under the health route asserting 404) so the module participates in the regression gate from day one.
+**Sample spec** `cypress/e2e/API/health-module/01-get-health.cy.js` — a `@PR @Smoke` GET on `/api/health` (or `/`) following the template skeleton, **plus one `@Regression` negative case** (e.g. a bogus path under the health route asserting 404) so the module participates in the regression gate from day one. Note: this spec can only prove the wiring once a backend answers — Cypress refuses to start when `baseUrl` is unreachable, so without a running backend the run aborts before any spec executes (Phase 4 must say so plainly, never claim the wiring is proven).
 
 **`.gitignore`** (append if missing): `node_modules/`, `cypress.env.json`, `cypress/reports/`, `cypress/screenshots/`, `cypress/logs/`, `docs/`, `.claude/project-config.local.json`.
 
@@ -331,7 +336,7 @@ Validate with `node -e "JSON.parse(require('fs').readFileSync('.claude/project-c
 ## Phase 4 — Verify
 
 1. Framework boots: `npx cypress verify` | `npx playwright --version`.
-2. If the primary base URL answers (`curl -s -o /dev/null -w "%{http_code}"` is 2xx/3xx), run the sample health spec with `runCommand.headless`; otherwise print `⏭ backend not running — skipped sample run` (not an error).
+2. If the primary base URL answers (`curl -s -o /dev/null -w "%{http_code}"` is 2xx/3xx), run the sample health spec with `runCommand.headless`; otherwise print `⏭ backend not running — sample run deferred; the wiring is scaffolded but NOT yet proven (Cypress refuses to start when baseUrl is unreachable). Start the backend, run /doctor, then npm run cy:pr.` — never tell the user the wiring is proven when the sample spec has not executed.
 3. Print the summary: framework, files created / skipped-as-existing, packages installed, config keys written, and next steps:
 
 > **Next steps:**
