@@ -17,6 +17,11 @@ You set up a brand-new QA automation project so the agents and skills in this fr
 
 If `$ARGUMENTS` contains `demo`, skip the interview entirely and set up a try-it-in-10-minutes sandbox against a public API — no backend, no Jira, no credentials:
 
+**Existing-config guard (run BEFORE any demo write):** if `.claude/project-config.json` exists with non-default values (`name` ≠ `"YourProject"`, or `ticketSource.type` ≠ `"none"`, or a real `app.primaryBaseUrl`, or a non-null `auth.primary.loginCommand`), demo mode must NOT silently rewrite it — that would drop the configured tracker/auth values, and since `cypress.config.js` already exists Golden Rule 1 would skip it, leaving `baseUrl` pointed at the real backend while the demo specs expect the public API (the demo could not even run). Ask (AskUserQuestion):
+- **Coexist (Recommended)** — write ONLY the demo specs + seeded DEMO-1 ticket files; config and `cypress.config.js` untouched. Write the demo specs with **absolute URLs** (`cy.api({ url: "https://jsonplaceholder.typicode.com/posts", ... })`) so they run under any baseUrl.
+- **Convert to demo** — rewrite the config for the sandbox, but FIRST print the exact values being replaced (`dbVerification`, `ticketSource.type`, `app.primaryBaseUrl`, `auth.primary.loginCommand`, `ticketSource.jira.cloudId`) and wait for confirmation. Also print the `cypress.config.js` baseUrl change the user must make by hand (Golden Rule 1 forbids overwriting it).
+- **Cancel.**
+
 - Presets: `FRAMEWORK = cypress` (or `playwright` if also passed), `PRIMARY_URL = https://jsonplaceholder.typicode.com`, `DB = false`, `JIRA_CLOUD_ID = null`.
 - Scaffold per Phase 2 with these adjustments: no login stub (the demo API is unauthenticated — write `auth.primary.loginCommand: null` in Phase 3 and set `dbVerification: false`), no `pg`, no env-file DB keys.
 - **Sample specs** — one spec per endpoint (the demo is the first pattern people copy, so it must follow the standard), each `it()` titled `Test Case NN: [DEMO-1] …` per the framework template:
@@ -50,7 +55,7 @@ If `$ARGUMENTS` contains `demo`, skip the interview entirely and set up a try-it
 
 If `$ARGUMENTS` names a framework (`cypress` or `playwright`), use it; otherwise ask. Batch the questions with AskUserQuestion:
 
-1. **Framework** — `Cypress + JavaScript (Recommended)` (richest template support in this repo) | `Playwright + JavaScript`.
+1. **Framework** — `Cypress + JavaScript (Recommended)` (richest template support in this repo) | `Playwright + JavaScript (EXPERIMENTAL)` — the Playwright path relies on per-run translation of Cypress-oriented instructions and is not exercised by `/qa-selftest`; expect rough edges and review generated specs more carefully.
 2. **Backends** — `One backend` | `Two backends (primary + secondary)`.
 3. **Primary base URL** — offer `http://localhost:4000` and `http://localhost:3000`; free text via Other. (If two backends, also ask for the secondary URL.)
 4. **DB verification** — `PostgreSQL (Recommended)` (enables the DB-assertion-on-mutation standard) | `None` (DB checks degrade to API-level verification — note this weakens the testing standards).
@@ -75,7 +80,7 @@ docs/test-cases   docs/.ticket-context
 ```
 
 **Packages** — `npm init -y` if no `package.json`, then immediately fix the metadata `npm init -y` scrapes from the README (`npm pkg set name="<repo-folder-name>" description="<PROJECT_NAME> E2E regression suite (API + UI)"`), then:
-`npm install -D cypress cypress-plugin-api cypress-mochawesome-reporter @cypress/grep @faker-js/faker chai-json-schema` (+ `pg` if DB).
+`npm install -D cypress@15 cypress-plugin-api@2 cypress-mochawesome-reporter@5 @cypress/grep@6 @faker-js/faker@10 chai-json-schema@2` (+ `pg@8` if DB) — majors pinned to the "Tested with" table in `.claude/templates/cypress-javascript.md`; bump them there and here together.
 After installing, run `npm audit` and apply `npm audit fix` for anything auto-fixable; report what remains.
 
 **`package.json` scripts** (merge, don't clobber existing):
@@ -83,9 +88,9 @@ After installing, run `npm audit` and apply `npm audit fix` for anything auto-fi
 "cy:run": "cypress run",
 "cy:api": "cypress run --spec 'cypress/e2e/API/**/*.cy.js'",
 "cy:ui": "cypress run --spec 'cypress/e2e/UI/**/*.cy.js'",
-"cy:pr": "cypress run --env grepTags=@PR",
-"cy:smoke": "cypress run --env grepTags=@Smoke",
-"cy:regression": "cypress run --env grepTags=@Regression",
+"cy:pr": "cypress run --expose grepTags=@PR",
+"cy:smoke": "cypress run --expose grepTags=@Smoke",
+"cy:regression": "cypress run --expose grepTags=@Regression",
 "cy:open": "cypress open"
 ```
 
@@ -109,7 +114,8 @@ module.exports = defineConfig({
         retries: { runMode: 1, openMode: 0 },
         setupNodeEvents(on, config) {
             require("cypress-mochawesome-reporter/plugin")(on);
-            require("@cypress/grep/src/plugin")(config);
+            const { plugin: cypressGrepPlugin } = require("@cypress/grep/plugin");
+            cypressGrepPlugin(config);
             on("task", require("./cypress/tasks"));
             // Append every run to the knowledge base — this is what makes flake
             // detection work (a test flipping pass/fail across runs is flaky).
@@ -149,8 +155,8 @@ module.exports = defineConfig({
 import "cypress-plugin-api";
 import "cypress-mochawesome-reporter/register";
 import "./commands";
-const registerGrep = require("@cypress/grep");
-registerGrep();
+const { register: registerCypressGrep } = require("@cypress/grep");
+registerCypressGrep();
 chai.use(require("chai-json-schema"));
 ```
 
@@ -215,7 +221,7 @@ module.exports = {
 
 **Knowledge seeds** in `cypress/knowledge/` — create each with an empty-but-valid shape: `api-catalog.json` (`{"modules": {}}`), `api-behavior-notes.json` (`{"known_500_bugs": [], "endpoint_quirks": [], "auth_behavior": []}`), `api-dependency-map.json` (`{"modules": {}}`), `failure-patterns.json` (`{"patterns": []}`), `test-run-history.json` (`{"runs": []}`), `tagging-strategy.json` (`{"@PR": "pre-merge gate", "@Smoke": "post-deploy sanity", "@Regression": "full pass"}`), plus a `_README.md` one-liner pointing at CLAUDE.md's knowledge-base protocol.
 
-**Sample spec** `cypress/e2e/API/health-module/01-get-health.cy.js` — a `@PR @Smoke` GET on `/api/health` (or `/`) following the template skeleton, so the very first run proves the wiring, **plus one `@Regression` negative case** (e.g. a bogus path under the health route asserting 404) so the module participates in the regression gate from day one.
+**Sample spec** `cypress/e2e/API/health-module/01-get-health.cy.js` — a `@PR @Smoke` GET on `/api/health` (or `/`) following the template skeleton, **plus one `@Regression` negative case** (e.g. a bogus path under the health route asserting 404) so the module participates in the regression gate from day one. Note: this spec can only prove the wiring once a backend answers — Cypress refuses to start when `baseUrl` is unreachable, so without a running backend the run aborts before any spec executes (Phase 4 must say so plainly, never claim the wiring is proven).
 
 **`.gitignore`** (append if missing): `node_modules/`, `cypress.env.json`, `cypress/reports/`, `cypress/screenshots/`, `cypress/logs/`, `docs/`, `.claude/project-config.local.json`.
 
@@ -228,7 +234,7 @@ tests/support   tests/fixtures/schemas   tests/knowledge
 docs/test-cases   docs/.ticket-context
 ```
 
-**Packages** — `npm init -y` if needed, then `npm install -D @playwright/test @faker-js/faker dotenv ajv` (+ `pg` if DB), then `npx playwright install chromium`.
+**Packages** — `npm init -y` if needed, then `npm install -D @playwright/test@1 @faker-js/faker@10 dotenv@16 ajv@8` (+ `pg@8` if DB), then `npx playwright install chromium` — majors pinned to the "Tested with" table in `.claude/templates/playwright-javascript.md`.
 
 **`package.json` scripts:** `pw:run` (`playwright test`), `pw:api` (`playwright test --project=api`), `pw:ui` (`playwright test --project=ui`), `pw:pr` (`playwright test --grep @PR`), `pw:smoke` (`--grep @Smoke`), `pw:regression` (`--grep @Regression`), `pw:report` (`playwright show-report`).
 
@@ -269,49 +275,23 @@ module.exports = defineConfig({
 
 ### Both frameworks — pre-commit gate
 
-CLAUDE.md and `/pr` reference `npm run hooks:install` and the `.githooks` pre-commit gate — scaffold both so the promise holds:
+CLAUDE.md and `/pr` reference `npm run hooks:install` and the `.githooks` pre-commit gate — scaffold both so the promise holds. The gate logic itself lives in `scripts/gates/` (shipped by the framework's `install.sh`; the same runner `/validate-spec` and `/qa-selftest` use) — the hook only invokes it, so there is exactly one copy of every scanner.
 
 **`package.json` script** (merge): `"hooks:install": "git config core.hooksPath .githooks"` — tell the user it is one-time per clone.
 
 **`.githooks/pre-commit`** (create the folder; make the file executable with `chmod +x .githooks/pre-commit`):
 ```bash
 #!/usr/bin/env bash
-# QA pre-commit gate — syntax, no-5xx, no NEW ambiguous 2xx/4xx oneOf, JSON validity.
+# QA pre-commit gate — runs the shared qa-gates scanners (validate-spec Checks
+# 1,4,6,8,9,9b,11) on staged specs, plus JSON validity.
 # Installed via: npm run hooks:install   Policy: never bypass with --no-verify.
 set -u
 fail=0
 
-specs=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(cy|spec)\.js$' || true)
-jsons=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.json$' || true)
+if [ -f scripts/gates/index.js ]; then node scripts/gates/index.js --staged || fail=1
+else npx --no-install qa-gates --staged || fail=1; fi
 
-for f in $specs; do
-  [ -f "$f" ] || continue
-
-  # 1. Syntax (CJS or ESM)
-  node --check "$f" || { echo "✗ syntax error: $f"; fail=1; }
-
-  # 2. No 5xx accepted anywhere in the spec (multi-line aware)
-  node -e '
-const fs=require("fs"),src=fs.readFileSync(process.argv[1],"utf8");const bad=[];let m;
-const arr=/oneOf\(\s*\[[\s\S]*?\]/g;
-while((m=arr.exec(src))) if(/\b5\d{2}\b/.test(m[0])) bad.push(src.slice(0,m.index).split(/\n/).length);
-const eq=/to\.(equal|include)\(\s*5\d{2}\b/g;
-while((m=eq.exec(src))) bad.push(src.slice(0,m.index).split(/\n/).length);
-for(const l of bad) console.log("✗ 5xx accepted in assertion: "+process.argv[1]+":"+l);
-process.exit(bad.length?1:0);' "$f" || fail=1
-
-  # 3. No NEW ambiguous 2xx/4xx oneOf on ADDED lines (escape hatch: // status-ambiguous: <reason>)
-  git diff --cached -U0 -- "$f" | grep -E '^\+[^+]' | sed 's/^+//' | node -e '
-let src="";process.stdin.on("data",d=>src+=d).on("end",()=>{
-const arr=/oneOf\(\s*\[[\s\S]*?\]/g;let m,bad=0;
-while((m=arr.exec(src))){const b=m[0];
-  const tail=(src.slice(arr.lastIndex).split("\n")[0]||"");
-  if(/\b2\d{2}\b/.test(b)&&/\b4\d{2}\b/.test(b)&&!/status-ambiguous/.test(b+tail)){
-    console.log("✗ NEW ambiguous 2xx/4xx oneOf added in "+process.argv[1]);bad=1;}}
-process.exit(bad);});' "$f" || fail=1
-done
-
-for f in $jsons; do
+for f in $(git diff --cached --name-only --diff-filter=ACM | grep -E '\.json$'); do
   [ -f "$f" ] || continue
   node -e 'JSON.parse(require("fs").readFileSync(process.argv[1],"utf8"))' \
     "$f" >/dev/null 2>&1 || { echo "✗ invalid JSON: $f"; fail=1; }
@@ -356,7 +336,7 @@ Validate with `node -e "JSON.parse(require('fs').readFileSync('.claude/project-c
 ## Phase 4 — Verify
 
 1. Framework boots: `npx cypress verify` | `npx playwright --version`.
-2. If the primary base URL answers (`curl -s -o /dev/null -w "%{http_code}"` is 2xx/3xx), run the sample health spec with `runCommand.headless`; otherwise print `⏭ backend not running — skipped sample run` (not an error).
+2. If the primary base URL answers (`curl -s -o /dev/null -w "%{http_code}"` is 2xx/3xx), run the sample health spec with `runCommand.headless`; otherwise print `⏭ backend not running — sample run deferred; the wiring is scaffolded but NOT yet proven (Cypress refuses to start when baseUrl is unreachable). Start the backend, run /doctor, then npm run cy:pr.` — never tell the user the wiring is proven when the sample spec has not executed.
 3. Print the summary: framework, files created / skipped-as-existing, packages installed, config keys written, and next steps:
 
 > **Next steps:**

@@ -67,23 +67,17 @@ Read `.claude/project-config.json` (+ `project-config.local.json` if present). T
 8. **Pipeline-state contract:** each step key declared in an agent's canonical state JSON is also used by its owning command file (`fetch-ticket`, `analyze-code`, `create-manual-test-cases`, `post-tests`, `create-api-automated-test-cases`, `create-schema-validation`, `validate-api-spec`, `validate-ui-spec`, `run-api-tests`, `run-ui-tests`, `explore-live-app`, `create-ui-automated-test-cases`, `generate-postman-collection`).
 9. **Lock protocol declared everywhere:** all four agents reference the Run Lock protocol and their own domain (`manual`, `api`, `ui`, `postman`); the canonical atomic-write snippet exists in `manual-test-generator.md`.
 
-## Phase 2 — Hard-gate validator scripts (fixture round-trip)
+## Phase 2 — Spec gate scanners (fixture round-trip)
 
-The three hard gates in `validate-spec.md` are executable scripts — this phase proves they still catch what they must catch and pass what they must pass.
+The mechanical gates live in `scripts/gates/` (single owner — `/validate-spec`, the pre-commit hook, and CI all run the same code). Its test harness already encodes every expectation against the bundled fixtures (good passes all gates; bad trips no-5xx, no-ambiguous, db-assertion, ticket-id, and tags-present), plus per-gate edge cases (escape hatch, `dbVerification: false` skip, `--json`).
 
-1. `TMP=$(mktemp -d)`; copy the fixtures there with their real names:
-   `cp .claude/selftest/specs/good-api-spec.cy.js.fixture $TMP/good.cy.js` (same for bad).
-2. `node --check` both files (they must be valid JS).
-3. **Extract from `.claude/commands/validate-spec.md`** the three embedded `node -e` scripts — Check 9 (no 5xx accepted), Check 9b (no ambiguous 2xx/4xx `oneOf`), Check 11 (DB assertion on mutation) — and run each against both files. Expectations (8 total):
+Run it and require a zero exit:
 
-| Script | `good.cy.js` | `bad.cy.js` |
-|---|---|---|
-| syntax (`node --check`) | exit 0 | exit 0 |
-| Check 9 | exit 0 | exit 1, message mentions 5xx |
-| Check 9b | exit 0 | exit 1, mentions ambiguous oneOf |
-| Check 11 | exit 0 | exit 1, mentions missing DB assertion |
+```bash
+node scripts/gates/__tests__/run.js
+```
 
-Any deviation means someone changed a gate script (or a fixture) — report which check, which direction, and the actual output.
+Any FAIL line means someone changed a gate or a fixture — report the failing assertion verbatim.
 
 ## Phase 3 — State & locking mechanics
 

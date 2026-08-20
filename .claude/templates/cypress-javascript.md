@@ -13,10 +13,24 @@ Read this file when `project.testFramework = "cypress"`. It defines the syntax, 
 | DB access | `cy.task("queryDb", sql)` / `cy.task("querySecondaryDb", sql)` — Node-side tasks in `cypress/tasks/` |
 | Schema assertion | `chai-json-schema` → `expect(body).to.be.jsonSchema(schema)` |
 | Data factory | `cypress/support/dataFactory.js` (@faker-js/faker) |
-| Tags | `it("...", { tags: ["@PR", "@Smoke"] }, ...)` via @cypress/grep; run with `--env grepTags=@PR` |
+| Tags | `it("...", { tags: ["@PR", "@Smoke"] }, ...)` via @cypress/grep; run with `--expose grepTags=@PR` (v6+ — `--env grepTags` is the v5 form and is silently ignored on v6) |
 | Reports | Mochawesome — HTML at `cypress/reports/html/index.html`, JSON under `cypress/reports/` |
 | Failure artifacts | `cypress/screenshots/` |
 | Run single spec | `npx cypress run --spec "<file>"` |
+
+## Tested with (verified by execution — /doctor warns on major drift)
+
+| Package | Version |
+|---|---|
+| cypress | 15.21.0 |
+| @cypress/grep | 6.0.3 |
+| cypress-mochawesome-reporter | 5.0.0 |
+| cypress-plugin-api | 2.12.1 |
+| @faker-js/faker | 10.6.0 |
+| chai-json-schema | 2.0.1 |
+| pg | 8.23.0 |
+
+The instructions in this framework assume these majors (e.g. @cypress/grep v6's `--expose grepTags` / `/plugin` subpath). A different installed major means the instructions may be silently wrong — update the framework and this table together, never just the dependency.
 
 ## API spec skeleton
 

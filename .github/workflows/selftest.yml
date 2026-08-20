@@ -1,0 +1,59 @@
+name: framework-selftest
+
+# Deterministic half of /qa-selftest (no LLM). Every defect class this guards
+# against has shipped before: broken JSON, schema drift, fail-open hooks,
+# gate-scanner regressions, dangling references, and v5-era @cypress/grep flags.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  selftest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: All framework JSON parses
+        run: |
+          find .claude -name '*.json' -print0 | while IFS= read -r -d '' f; do
+            node -e 'JSON.parse(require("fs").readFileSync(process.argv[1],"utf8"))' "$f" \
+              || { echo "invalid JSON: $f"; exit 1; }
+          done
+          node -e 'JSON.parse(require("fs").readFileSync("package.json","utf8"))'
+
+      - name: Config shape matches schema requirements
+        run: |
+          node -e '
+          const c=JSON.parse(require("fs").readFileSync(".claude/project-config.json","utf8"));
+          const p=c.project; const fail=(m)=>{console.error("config shape: "+m);process.exit(1)};
+          if(!p) fail("project missing");
+          ["name","testFramework","paths","auth","app","runCommand"].forEach(k=>{if(!(k in p))fail("project."+k+" missing")});
+          if(!["cypress","playwright"].includes(p.testFramework)) fail("bad testFramework");
+          ["ticketContext","manualCases","apiTests","uiTests","pages","support","fixtures","reports"].forEach(k=>{if(!(k in p.paths))fail("paths."+k+" missing")});
+          if(!/\{specFile\}/.test(p.runCommand.headless||"")) fail("runCommand.headless lacks {specFile}");
+          const stacks=JSON.parse(require("fs").readFileSync(".claude/stacks/code-patterns.json","utf8"));
+          if(p.productCode&&p.productCode.stack&&!(p.productCode.stack in stacks)) fail("productCode.stack not in code-patterns.json");
+          console.log("config shape OK");'
+
+      - name: Hook exit-code smoke tests
+        run: bash scripts/hook-smoke.sh
+
+      - name: Spec gate scanners (fixture round-trip)
+        run: node scripts/gates/__tests__/run.js
+
+      - name: No dangling framework references in .claude markdown
+        run: node scripts/check-references.js
+
+      - name: No v5-era @cypress/grep usage (regression guard)
+        run: |
+          # `--env grepTags=` (with =) is the executable form; bare `--env grepTags` in prose
+          # is the deliberate warning about the v5 pitfall and stays allowed.
+          if grep -rnE -- '--env grepTags=|@cypress/grep/src/plugin' .claude; then
+            echo "v5-era @cypress/grep usage found — use --expose grepTags and @cypress/grep/plugin"; exit 1
+          fi
+          echo "no v5-era grep usage"

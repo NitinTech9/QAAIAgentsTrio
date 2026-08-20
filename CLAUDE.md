@@ -39,7 +39,7 @@ Reports: Mochawesome HTML at `cypress/reports/html/index.html` (every headless r
 
 ## Testing standards (enforced)
 
-Full conventions live in `CONTRIBUTING/testing-standards/` — read the relevant file before writing or reviewing tests. The load-bearing rules:
+The load-bearing rules (the mechanical ones are enforced by `scripts/gates/` — the pre-commit hook, `/validate-spec`, and CI all run the same scanners):
 
 - **Never accept 5xx** in a status assertion, and no ambiguous `oneOf([2xx, 4xx])` — a test must be able to fail. A pre-commit hook and `/validate-spec` enforce this on new/changed specs.
 - **DB assertion on every mutation** (POST/PUT/DELETE) via the Cypress tasks to prove persistence.

@@ -34,8 +34,7 @@ If none is found, there is nothing to do — print `⚠️ No API spec found for
 
 ## Generate Schema Coverage
 
-For **every endpoint the functional spec automates that returns a 200 JSON body**, per
-`CONTRIBUTING/testing-standards/feedback_schema_validation.md`:
+For **every endpoint the functional spec automates that returns a 200 JSON body** (the standard: one schema-validation spec per API, landed in the same change as the functional spec):
 
 1. **Capture the real 200 response** for the endpoint (reuse the spec's auth/IDs — same
    `cy.loginAndGetSessionCookie()` or the secondary app's login command, same resource lookups).
