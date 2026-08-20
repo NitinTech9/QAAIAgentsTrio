@@ -19,7 +19,10 @@ If `$ARGUMENTS` contains `demo`, skip the interview entirely and set up a try-it
 
 - Presets: `FRAMEWORK = cypress` (or `playwright` if also passed), `PRIMARY_URL = https://jsonplaceholder.typicode.com`, `DB = false`, `JIRA_CLOUD_ID = null`.
 - Scaffold per Phase 2 with these adjustments: no login stub (the demo API is unauthenticated — write `auth.primary.loginCommand: null` in Phase 3 and set `dbVerification: false`), no `pg`, no env-file DB keys.
-- **Sample spec** `<apiTests>/posts-module/01-get-posts.cy.js` (or `.spec.js`): three cases per the framework template — GET `/posts` is 200 + non-empty (`@PR @Smoke`), GET `/posts/999999` is 404 (`@Regression`), POST `/posts` returns 201 with an id (`@Regression`).
+- **Sample specs** — one spec per endpoint (the demo is the first pattern people copy, so it must follow the standard), each `it()` titled `Test Case NN: [DEMO-1] …` per the framework template:
+  - `<apiTests>/posts-module/01-get-posts.cy.js` — GET `/posts` is 200 + non-empty array (`@PR @Smoke`).
+  - `<apiTests>/posts-module/02-get-post-by-id.cy.js` — GET `/posts/1` returns the post with id/title/body/userId (`@PR @Smoke`); GET `/posts/999999` is 404 (`@Regression`).
+  - `<apiTests>/posts-module/03-post-create-post.cy.js` — POST `/posts` with title/body/userId returns 201 with an id (`@PR @Smoke`).
 - **Seed a fake ticket** so the agent pipeline can be tried offline (the agents skip `fetch-ticket` when context already exists):
   - `docs/test-cases/DEMO-1.md` — two `- **Type:** API` sections: *Read posts* ("Verify that GET /posts returns 200 and a non-empty list", "Verify that GET /posts/{id} returns the post with id, title, body, userId", "Verify that GET /posts/999999 returns 404") and *Create post* ("Verify that POST /posts with title/body/userId returns 201 with an id").
   - `docs/.ticket-context/DEMO-1.json` — `{ "key": "DEMO-1", "summary": "Demo: posts API coverage", "issuetype": "Story", "description": "Cover the public posts API (demo ticket — not backed by Jira)." }`
@@ -27,10 +30,12 @@ If `$ARGUMENTS` contains `demo`, skip the interview entirely and set up a try-it
 - Phase 4 runs the sample spec (the public API is reachable from anywhere) and ends with demo-specific next steps:
 
 > **Try the framework:**
-> 1. `/qa-only` — audit the demo suite and see a health report.
+> 1. `/qa-audit` — audit the demo suite and see a health report.
 > 2. `@api-automation-test-generator DEMO-1 auto` — watch the full generation pipeline run offline (`auto` skips the Jira steps).
 > 3. `/generate-api-test write tests for GET /comments` — generate a new spec from a plain description.
 > When you're done exploring, re-run `/qa-init` in your real repo.
+
+**Going real after the demo (cleanup):** the demo leaves artifacts that will sit alongside real data and pollute knowledge lookups. When switching this repo to a real product, delete: the demo specs (`<apiTests>/posts-module/`), the fake ticket files (`docs/test-cases/DEMO-1.md`, `docs/.ticket-context/DEMO-1*`), and any `jsonplaceholder`/demo entries in the knowledge files (`api-catalog.json`, `api-behavior-notes.json`, `api-dependency-map.json`) — then re-run `/qa-init` (sync mode) with your real URLs, set `ticketSource.type` to your tracker, and restore `auth.primary.loginCommand` + `dbVerification` to real values.
 
 ## Phase 0 — Detect existing setup
 
@@ -49,9 +54,11 @@ If `$ARGUMENTS` names a framework (`cypress` or `playwright`), use it; otherwise
 2. **Backends** — `One backend` | `Two backends (primary + secondary)`.
 3. **Primary base URL** — offer `http://localhost:4000` and `http://localhost:3000`; free text via Other. (If two backends, also ask for the secondary URL.)
 4. **DB verification** — `PostgreSQL (Recommended)` (enables the DB-assertion-on-mutation standard) | `None` (DB checks degrade to API-level verification — note this weakens the testing standards).
-5. **Jira** — ask for the Jira cloud ID (`your-org.atlassian.net`) or `skip for now`.
+5. **Jira** — ask for the Jira cloud ID (`your-org.atlassian.net`) or `skip for now`. (Written to `ticketSource.jira.cloudId` — the top-level `jira` block is deprecated; if a cloud ID is given, also set `ticketSource.type` to `"jira"`, otherwise leave it `"none"`.)
+6. **Project name** — default to the repo folder name; used for `project.name` and package metadata (never leave `"YourProject"` behind).
+7. **Backend stack** (optional — selects `/analyze-code`'s route/role-gate patterns; valid values are the keys of `.claude/stacks/code-patterns.json`): `go-chi` | `go-gin` | `express` | `nestjs` | `django` | `fastapi` | `rails` | `spring-boot` | `laravel` | `dotnet` | skip (stays `generic` — works but noisy).
 
-Record: `FRAMEWORK`, `TEST_ROOT` (`cypress` | `tests`), `PRIMARY_URL`, `SECONDARY_URL|null`, `DB` (bool), `JIRA_CLOUD_ID|null`.
+Record: `FRAMEWORK`, `TEST_ROOT` (`cypress` | `tests`), `PRIMARY_URL`, `SECONDARY_URL|null`, `DB` (bool), `JIRA_CLOUD_ID|null`, `PROJECT_NAME`, `STACK|null`.
 
 ## Phase 2 — Scaffold
 
@@ -67,8 +74,9 @@ cypress/logs      cypress/reports  cypress/screenshots
 docs/test-cases   docs/.ticket-context
 ```
 
-**Packages** — `npm init -y` if no `package.json`, then:
+**Packages** — `npm init -y` if no `package.json`, then immediately fix the metadata `npm init -y` scrapes from the README (`npm pkg set name="<repo-folder-name>" description="<PROJECT_NAME> E2E regression suite (API + UI)"`), then:
 `npm install -D cypress cypress-plugin-api cypress-mochawesome-reporter @cypress/grep @faker-js/faker chai-json-schema` (+ `pg` if DB).
+After installing, run `npm audit` and apply `npm audit fix` for anything auto-fixable; report what remains.
 
 **`package.json` scripts** (merge, don't clobber existing):
 ```json
@@ -103,6 +111,29 @@ module.exports = defineConfig({
             require("cypress-mochawesome-reporter/plugin")(on);
             require("@cypress/grep/src/plugin")(config);
             on("task", require("./cypress/tasks"));
+            // Append every run to the knowledge base — this is what makes flake
+            // detection work (a test flipping pass/fail across runs is flaky).
+            on("after:run", (results) => {
+                if (!results || !results.runs) return; // interrupted run
+                const fs = require("fs");
+                const p = "cypress/knowledge/test-run-history.json";
+                try {
+                    const h = fs.existsSync(p) ? JSON.parse(fs.readFileSync(p, "utf8")) : { runs: [] };
+                    h.runs.push({
+                        date: new Date().toISOString(),
+                        totalTests: results.totalTests,
+                        totalPassed: results.totalPassed,
+                        totalFailed: results.totalFailed,
+                        totalPending: results.totalPending,
+                        failedSpecs: results.runs
+                            .filter((r) => r.stats.failures > 0)
+                            .map((r) => r.spec.relative),
+                    });
+                    fs.writeFileSync(p, JSON.stringify(h, null, 2));
+                } catch (e) {
+                    console.warn("test-run-history append failed:", e.message);
+                }
+            });
             return config;
         },
     },
@@ -110,6 +141,8 @@ module.exports = defineConfig({
     reporterOptions: { reportDir: "cypress/reports/html", charts: true, embeddedScreenshots: true },
 });
 ```
+
+> **Note on `Cypress.env()` deprecation:** newer Cypress versions warn that browser-readable env (`allowCypressEnv`) is insecure and will change. The scaffolded specs read credentials via `Cypress.env(...)`; decide your migration posture NOW (follow the Cypress migration guide for your installed version) rather than after dozens of specs depend on the pattern — record the decision as a comment in `cypress.config.js`.
 
 **`cypress/support/e2e.js`**
 ```javascript
@@ -152,15 +185,28 @@ export const createCustomer = () => ({
 ```javascript
 const fs = require("fs");
 const { Pool } = require("pg");
-const env = JSON.parse(fs.readFileSync("cypress.env.json", "utf8"));
 
-const pool = new Pool({
-    host: env.DB_HOST, port: env.DB_PORT, database: env.DB_NAME,
-    user: env.DB_USER, password: env.DB_PASSWORD,
-});
+// Guard: a missing cypress.env.json must NOT crash Cypress bootstrap (this file
+// is require()d by cypress.config.js). Fail at task-call time with a clear
+// message instead of a stack trace on a fresh clone.
+const env = fs.existsSync("cypress.env.json")
+    ? JSON.parse(fs.readFileSync("cypress.env.json", "utf8"))
+    : null;
+
+const pool = env
+    ? new Pool({
+          host: env.DB_HOST, port: env.DB_PORT, database: env.DB_NAME,
+          user: env.DB_USER, password: env.DB_PASSWORD,
+      })
+    : null;
 
 module.exports = {
-    async queryDb(sql) { return (await pool.query(sql)).rows; },
+    async queryDb(sql) {
+        if (!pool) throw new Error(
+            "cypress.env.json is missing — copy cypress.env.example.json to cypress.env.json and fill in the DB_* keys."
+        );
+        return (await pool.query(sql)).rows;
+    },
     // Add querySecondaryDb with a second Pool if you test a second backend.
 };
 ```
@@ -169,7 +215,7 @@ module.exports = {
 
 **Knowledge seeds** in `cypress/knowledge/` — create each with an empty-but-valid shape: `api-catalog.json` (`{"modules": {}}`), `api-behavior-notes.json` (`{"known_500_bugs": [], "endpoint_quirks": [], "auth_behavior": []}`), `api-dependency-map.json` (`{"modules": {}}`), `failure-patterns.json` (`{"patterns": []}`), `test-run-history.json` (`{"runs": []}`), `tagging-strategy.json` (`{"@PR": "pre-merge gate", "@Smoke": "post-deploy sanity", "@Regression": "full pass"}`), plus a `_README.md` one-liner pointing at CLAUDE.md's knowledge-base protocol.
 
-**Sample spec** `cypress/e2e/API/health-module/01-get-health.cy.js` — a single `@PR @Smoke` GET on `/api/health` (or `/`) following the template skeleton, so the very first run proves the wiring.
+**Sample spec** `cypress/e2e/API/health-module/01-get-health.cy.js` — a `@PR @Smoke` GET on `/api/health` (or `/`) following the template skeleton, so the very first run proves the wiring, **plus one `@Regression` negative case** (e.g. a bogus path under the health route asserting 404) so the module participates in the regression gate from day one.
 
 **`.gitignore`** (append if missing): `node_modules/`, `cypress.env.json`, `cypress/reports/`, `cypress/screenshots/`, `cypress/logs/`, `docs/`, `.claude/project-config.local.json`.
 
@@ -219,14 +265,69 @@ module.exports = defineConfig({
 
 **`tests/support/auth.js`** — request-level login stub returning `{ cookieHeader, csrfToken }` (mirror of the Cypress command, with the same TODOs). **`tests/support/db.js`** — `pg` Pool reading `process.env.DB_*`, exporting `queryDb(sql)` (only if DB = true). **`tests/support/dataFactory.js`** — same faker factory. **`tests/support/schema.js`** — small ajv helper `expectJsonSchema(body, schema)`.
 
-**`.env.example`** — same keys as the Cypress env example (copy to `.env`). **Knowledge seeds** — same six files, in `tests/knowledge/`. **Sample spec** `tests/api/health-module/01-get-health.spec.js` per the Playwright template skeleton. **`.gitignore`** — `node_modules/`, `.env`, `playwright-report/`, `test-results/`, `docs/`, `.claude/project-config.local.json`.
+**`.env.example`** — same keys as the Cypress env example (copy to `.env`). **Knowledge seeds** — same six files, in `tests/knowledge/`. **Sample spec** `tests/api/health-module/01-get-health.spec.js` per the Playwright template skeleton (happy path + one `@Regression` negative, as for Cypress). **`.gitignore`** — `node_modules/`, `.env`, `playwright-report/`, `test-results/`, `docs/`, `.claude/project-config.local.json`.
+
+### Both frameworks — pre-commit gate
+
+CLAUDE.md and `/pr` reference `npm run hooks:install` and the `.githooks` pre-commit gate — scaffold both so the promise holds:
+
+**`package.json` script** (merge): `"hooks:install": "git config core.hooksPath .githooks"` — tell the user it is one-time per clone.
+
+**`.githooks/pre-commit`** (create the folder; make the file executable with `chmod +x .githooks/pre-commit`):
+```bash
+#!/usr/bin/env bash
+# QA pre-commit gate — syntax, no-5xx, no NEW ambiguous 2xx/4xx oneOf, JSON validity.
+# Installed via: npm run hooks:install   Policy: never bypass with --no-verify.
+set -u
+fail=0
+
+specs=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(cy|spec)\.js$' || true)
+jsons=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.json$' || true)
+
+for f in $specs; do
+  [ -f "$f" ] || continue
+
+  # 1. Syntax (CJS or ESM)
+  node --check "$f" || { echo "✗ syntax error: $f"; fail=1; }
+
+  # 2. No 5xx accepted anywhere in the spec (multi-line aware)
+  node -e '
+const fs=require("fs"),src=fs.readFileSync(process.argv[1],"utf8");const bad=[];let m;
+const arr=/oneOf\(\s*\[[\s\S]*?\]/g;
+while((m=arr.exec(src))) if(/\b5\d{2}\b/.test(m[0])) bad.push(src.slice(0,m.index).split(/\n/).length);
+const eq=/to\.(equal|include)\(\s*5\d{2}\b/g;
+while((m=eq.exec(src))) bad.push(src.slice(0,m.index).split(/\n/).length);
+for(const l of bad) console.log("✗ 5xx accepted in assertion: "+process.argv[1]+":"+l);
+process.exit(bad.length?1:0);' "$f" || fail=1
+
+  # 3. No NEW ambiguous 2xx/4xx oneOf on ADDED lines (escape hatch: // status-ambiguous: <reason>)
+  git diff --cached -U0 -- "$f" | grep -E '^\+[^+]' | sed 's/^+//' | node -e '
+let src="";process.stdin.on("data",d=>src+=d).on("end",()=>{
+const arr=/oneOf\(\s*\[[\s\S]*?\]/g;let m,bad=0;
+while((m=arr.exec(src))){const b=m[0];
+  const tail=(src.slice(arr.lastIndex).split("\n")[0]||"");
+  if(/\b2\d{2}\b/.test(b)&&/\b4\d{2}\b/.test(b)&&!/status-ambiguous/.test(b+tail)){
+    console.log("✗ NEW ambiguous 2xx/4xx oneOf added in "+process.argv[1]);bad=1;}}
+process.exit(bad);});' "$f" || fail=1
+done
+
+for f in $jsons; do
+  [ -f "$f" ] || continue
+  node -e 'JSON.parse(require("fs").readFileSync(process.argv[1],"utf8"))' \
+    "$f" >/dev/null 2>&1 || { echo "✗ invalid JSON: $f"; fail=1; }
+done
+
+exit $fail
+```
 
 ## Phase 3 — Sync `.claude/project-config.json`
 
 Read the current file, **merge** (preserve keys you don't own, e.g. `jira.testIssueType`, `testLimits`, `productCode`), and write:
 
+- `name`: `PROJECT_NAME`
 - `testFramework`: `"cypress"` | `"playwright"`
 - `dbVerification`: `true` if DB was chosen, else `false` (disables the DB-assertion hard gate — a degraded standard, which Phase 4 must call out)
+- `productCode.stack`: `STACK` if given (merge into the existing `productCode` object — preserve `rootPaths`/`codePatterns`/`sourceGlobs`/`excludeDirs`)
 - `app.primaryBaseUrl` / `app.secondaryBaseUrl`, `app.envFile` (`cypress.env.json` | `.env`)
 - `jira.cloudId` (only if provided)
 - `paths` — per framework:
@@ -260,8 +361,10 @@ Validate with `node -e "JSON.parse(require('fs').readFileSync('.claude/project-c
 
 > **Next steps:**
 > 1. Copy the env example file and fill in real credentials (never commit it).
-> 2. Implement the real login flow in the auth support file (marked TODO).
-> 3. Drop your API's `swagger.json` into the fixtures folder (enables `/audit-coverage`).
-> 4. Run `/doctor` to preflight, then `@manual-test-generator <TICKET-ID>` to start the pipeline.
-> 5. Optional: copy `ci/qa-pr-gate.example.yml` (from the framework repo) to `.github/workflows/` for a PR gate; agents accept `auto` / `auto-post` flags for unattended runs.
-> 6. Lost at any point? Run `/qa-help` — it checks your setup state and tells you the next step.
+> 2. Run `npm run hooks:install` — one-time per clone; activates the pre-commit gate (no-5xx / ambiguous-oneOf / JSON checks).
+> 3. Create `.claude/project-config.local.json` with `productCode.rootPaths` pointing at your local product source checkout(s) — `/analyze-code` hard-stops without it — and set `productCode.stack` to your backend framework.
+> 4. Implement the real login flow in the auth support file (marked TODO).
+> 5. Drop your API's `swagger.json` into the fixtures folder (enables `/audit-coverage` and the Coverage health dimension).
+> 6. Run `/doctor` to preflight, then `@manual-test-generator <TICKET-ID>` to start the pipeline.
+> 7. Optional: copy `ci/qa-pr-gate.example.yml` (from the framework repo) to `.github/workflows/` for a PR gate; agents accept `auto` / `auto-post` flags for unattended runs.
+> 8. Lost at any point? Run `/qa-help` — it checks your setup state and tells you the next step.

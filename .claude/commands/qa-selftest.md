@@ -24,7 +24,7 @@ Read `.claude/project-config.json` (+ `project-config.local.json` if present). T
 2. **Config shape:** required keys per `.claude/schemas/project-config.schema.json` (structural `node -e` check; use ajv only if already installed). `testFramework` ∈ {cypress, playwright} and `.claude/templates/{testFramework}-javascript.md` exists.
 3. **Cross-references resolve:**
    - Every `.claude/commands/<name>.md` referenced by the four agent files exists.
-   - Files referenced by skills exist: `.claude/skills/qa/references/issue-taxonomy.md`, `.claude/skills/qa/templates/qa-report-template.md`, both `.claude/templates/*-javascript.md`.
+   - Files referenced by skills exist: `.claude/skills/qa-run/references/issue-taxonomy.md`, `.claude/skills/qa-run/templates/qa-report-template.md`, both `.claude/templates/*-javascript.md`.
    - Every distinct `{config.paths.<key>}` placeholder used anywhere in `.claude/commands/` and `.claude/agents/` (`grep -rhoE '\{config\.paths\.[A-Za-z]+\}' | sort -u`) names a key that exists in the config's `paths` object. Skip notation examples (a single capital letter like `{config.paths.X}` in a sentence *defining* the placeholder syntax); read the surrounding line before failing any hit.
    - The selftest fixtures themselves exist: `SELFTEST-1.json`, `SELFTEST-1-analysis.md`, `SELFTEST-1.md`, and both `specs/*.fixture` files.
    - **Every framework file referenced by any command/agent/skill exists.** This is the check that catches a payload gap before a teammate hits it:

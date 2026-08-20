@@ -131,7 +131,7 @@ flowchart TD
 
     subgraph T1["⚡ SKILLS — independent, use any time, no ticket needed"]
         direction LR
-        S1["/qa · /qa-only"]
+        S1["/qa-run · /qa-audit"]
         S2["/fix-test"]
         S3["/generate-api-test"]
         S4["/audit-coverage"]
@@ -149,7 +149,7 @@ flowchart TD
 |---|---|---|
 | **Agents** | You have a ticket and want the whole job done | `@manual-test-generator PROJ-456` |
 | **Commands** | You want to redo or inspect one specific step | `/validate-spec PROJ-456 api` |
-| **Skills** | No ticket — a test is failing, or you want a health check | `/fix-test`, `/qa-only` |
+| **Skills** | No ticket — a test is failing, or you want a health check | `/fix-test`, `/qa-audit` |
 
 **Never used this before?** Two commands are built for exactly that moment:
 
