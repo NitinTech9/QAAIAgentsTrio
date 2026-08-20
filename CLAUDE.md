@@ -73,7 +73,7 @@ The load-bearing rules (the mechanical ones are enforced by `scripts/gates/` —
 
 `cypress/knowledge/*.json` is active memory for test generation/fixing (see `cypress/knowledge/_README.md` for the full protocol):
 
-- **Before** generating or fixing tests: check `api-behavior-notes.json` (known 5xx bugs and quirks — never write a test expecting 200 from a known-broken endpoint), `api-dependency-map.json` (tables, cleanup order, auth roles per module), and `failure-patterns.json` (match errors against known `FP-###` fixes before re-diagnosing).
+- **Before** generating or fixing tests: check `api-behavior-notes.json` (known 5xx bugs and quirks), `api-dependency-map.json` (tables, cleanup order, auth roles per module), and `failure-patterns.json` (match errors against known `FP-###` fixes before re-diagnosing). A **fresh, ticketed** behavior note steers generation (don't assert 200 on a documented 5xx); a **stale or ticket-less** one means re-verify before trusting — never silently skip coverage on it (provenance/staleness rules: `.claude/protocols/knowledge-protocol.md`).
 - **After** any suite change or discovery: update the matching knowledge file **in the same change** — `api-catalog.json` for spec adds/moves/renames, next `FP-###` for new recurring failures, etc. Validate edited JSON with `node -e "JSON.parse(...)"`.
 - `test-run-history.json` is appended automatically on every run; a test flipping pass/fail there is flaky — don't "fix" a flake as if it were a bug.
 

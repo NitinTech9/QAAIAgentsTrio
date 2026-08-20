@@ -217,7 +217,11 @@ Distinguish **required** from **environment-dependent** data so a data-poor loca
 If while generating you discovered anything new about an endpoint, write it back **in this same
 change** (per `cypress/knowledge/_README.md`):
 - A new quirk / non-obvious behavior / real 5xx → `api-behavior-notes.json`
-  (`endpoint_quirks` or `known_500_bugs`).
+  (`endpoint_quirks` or `known_500_bugs`). **Every entry MUST carry** `endpoint`, `ticket` (the
+  bug tracking the defect — file/ask for one if none exists), `recordedAt`, `lastVerified`,
+  `recordedBy`, and a `note` — an unprovenanced entry silently suppresses coverage forever
+  (`.claude/protocols/knowledge-protocol.md`). List in your final output every endpoint whose
+  coverage a behavior note changed.
 - A module's tables / cleanup order / auth role / data source not already mapped →
   `api-dependency-map.json`.
 - The new spec's endpoint→file mapping → `api-catalog.json`.

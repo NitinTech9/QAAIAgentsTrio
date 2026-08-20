@@ -159,6 +159,15 @@
           }
         },
         "runTimeoutMs": { "type": "integer", "minimum": 1000 },
+        "knowledge": {
+          "type": "object",
+          "properties": {
+            "behaviorNoteMaxAgeDays": {
+              "type": "integer", "minimum": 1, "default": 90,
+              "description": "Staleness threshold for known_500_bugs/endpoint_quirks entries (measured from lastVerified). Past it, an entry means re-verify before trusting — never silently skip coverage."
+            }
+          }
+        },
         "productionProtection": {
           "type": "object",
           "description": "Production guardrails enforced at the tool layer: block-risky-bash.sh matches these patterns against shell commands, block-risky-mcp.sh against browser navigation URLs.",

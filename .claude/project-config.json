@@ -97,6 +97,10 @@
       "withEnv": "CYPRESS_ENV={env} npx cypress run --spec \"{specFile}\""
     },
     "runTimeoutMs": 600000,
+    "knowledge": {
+      "_comment": "Behavior-note entries older than this (by lastVerified) mean 're-verify before trusting', never 'skip the test' — see .claude/protocols/knowledge-protocol.md.",
+      "behaviorNoteMaxAgeDays": 90
+    },
     "productionProtection": {
       "_comment": "Regex patterns that must never appear in a shell command (block-risky-bash.sh) or a browser navigation URL (block-risky-mcp.sh). Put your production hostnames here.",
       "prodUrlPatterns": []

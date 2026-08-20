@@ -59,6 +59,9 @@ jobs:
           done
           exit $fail
 
+      - name: Knowledge audit surfaces stale ticket-less suppressions (selftest)
+        run: node scripts/knowledge-audit.js --selftest
+
       - name: Trust boundary referenced by every ticket-context reader
         run: |
           fail=0
