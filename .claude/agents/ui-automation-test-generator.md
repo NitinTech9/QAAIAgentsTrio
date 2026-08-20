@@ -115,6 +115,11 @@ The live-exploration steps need an authenticated browser. **You must NOT type a 
 
 The generated spec still authenticates programmatically (`config.auth.primary.loginCommand`, and `config.auth.secondary.loginCommand` if a second backend is configured), so this manual gate applies ONLY to generation-time exploration, never to the test runs themselves.
 
+**Exploration constraints (you hold a real authenticated session):**
+- **Non-local mutation gate:** when the base URL being explored is not local (`localhost`/`127.0.0.1`), get explicit user confirmation (`AskUserQuestion`) before the FIRST state-changing interaction — form submit, delete, any non-GET-equivalent action. Read-only exploration on a non-local env may proceed without it.
+- **`javascript_tool` is read-only:** use it to READ the DOM (selectors, labels, transient toast text), never to mutate application state or bypass UI controls — mutations go through real UI interaction so the test reflects real user behavior.
+- Navigation is bounded at the tool layer by `.claude/hooks/block-risky-mcp.sh` — a blocked navigate means the host isn't in `config.app.allowedHosts`; ask the user rather than working around it.
+
 ## Pipeline Steps
 
 ### Step 1: Explore the Live App

@@ -43,6 +43,22 @@ Confirm the browser MCP (`claude-in-chrome`) is available and the app is up:
 2. **Auto-detect:** navigate to the home route and check the URL. If it did NOT redirect to the login path, print `✔ Browser already authenticated` and continue.
 3. **If not authenticated:** read the email from `{config.app.envFile}` (`{config.app.emailKey}`), fill ONLY the email field, then use `AskUserQuestion` to ask the user to type their password and click Login, then confirm. Re-check the URL left the login path. **Do not type or read the password.**
 
+## Mutation Gate & Tool Constraints
+
+- **Non-local mutation gate:** resolve the base URL you are actually exploring. If its host is not
+  local (`localhost`/`127.0.0.1`), you must get explicit user confirmation via `AskUserQuestion`
+  before the FIRST state-changing interaction of the session — any form submit, delete, or other
+  non-GET-equivalent action. Read-only exploration (navigation, reading the DOM, screenshots) on a
+  non-local environment may proceed without the gate. One confirmation covers the session; name the
+  environment and the flow in the question.
+- **`javascript_tool` is for READING the DOM** — selectors, labels, `name` attributes, transient
+  toast text (MutationObserver). It must NOT be used to mutate application state, submit forms,
+  or bypass UI controls: mutations go through real UI interaction (`computer`/`form_input`) so the
+  captured flow reflects real user behavior and the generated test does too.
+- Navigation targets are bounded at the tool layer by `.claude/hooks/block-risky-mcp.sh`
+  (localhost + configured hosts only; production patterns blocked) — do not re-derive that logic
+  here; if a navigation is blocked, tell the user which config key allows the host.
+
 ## Test-Data Discovery (DB-driven, done BEFORE clicking)
 
 The flow needs concrete, precondition-satisfying data. Query the DB — **prefer the postgres MCP** (`mcp__postgres__query`) when it is connected, else a small Node script reusing the Cypress DB client under `{config.paths.tasks}` (the same `queryDb`/`querySecondaryDb` clients the suite uses); only fall back to `psql` via Bash if neither is available. Read creds from `{config.app.envFile}` (primary `DB_*`, secondary `SECONDARY_DB_*` if any):
