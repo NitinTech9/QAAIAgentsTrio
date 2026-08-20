@@ -7,6 +7,7 @@
 const fs = require("fs");
 const path = require("path");
 const { execSync } = require("child_process");
+const { stripComments } = require("./lib");
 
 const GATES = [
     require("./syntax"),         // Check 8
@@ -56,9 +57,14 @@ function main(argv) {
     for (const file of files) {
         if (!fs.existsSync(file)) { violations.push({ file, gate: "io", line: 0, message: "file not found" }); continue; }
         const src = fs.readFileSync(file, "utf8");
-        const ctx = { file, dbVerification: cfg.dbVerification, paths: cfg.paths, notes };
+        // Gates scan comment-stripped source (offsets preserved) so a comment can
+        // neither satisfy a presence check (db-assertion bypass) nor trip a
+        // pattern check (a comment quoting the rule). syntax opts into RAW via
+        // source:"raw"; no-ambiguous reads its comment escape hatch from ctx.raw.
+        const stripped = stripComments(src);
+        const ctx = { file, dbVerification: cfg.dbVerification, paths: cfg.paths, notes, raw: src };
         for (const g of GATES)
-            for (const v of g.check(src, ctx))
+            for (const v of g.check(g.source === "raw" ? src : stripped, ctx))
                 violations.push({ file, gate: g.name, line: v.line, message: v.message });
     }
 
