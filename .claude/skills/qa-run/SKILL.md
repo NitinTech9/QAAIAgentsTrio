@@ -75,10 +75,10 @@ mkdir -p cypress/reports
 
 ### Phase 2 — Baseline Run
 
-Run the full smoke suite and capture results. Tag filtering uses @cypress/grep's `grepTags` (NOT `CYPRESS_TAGS`), the environment is a **process env var** (the `--env` flag does not reach `cypress.config.js`), and the reporter comes from the config file — don't override it inline:
+Run the full smoke suite and capture results. Tag filtering uses `--expose grepTags=` on @cypress/grep v6+ (`--env grepTags` was the v5 form and is **silently ignored** on v6 — the run reports green while executing the whole suite). `CYPRESS_ENV` remains a **process env var**, and the reporter comes from the config file — don't override it inline:
 ```bash
 CYPRESS_ENV=local npx cypress run \
-  --env grepTags=@PR \
+  --expose grepTags=@PR \
   2>&1 | tee cypress/reports/qa-baseline-run.txt | tail -50
 ```
 
@@ -250,7 +250,7 @@ Report coverage separately per backend. Flag missing modules (no folder exists) 
 
 ```bash
 CYPRESS_ENV=local npx cypress run \
-  --env grepTags=@PR \
+  --expose grepTags=@PR \
   2>&1 | tail -30
 ```
 

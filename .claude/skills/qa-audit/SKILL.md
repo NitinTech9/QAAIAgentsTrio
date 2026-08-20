@@ -73,13 +73,13 @@ For each file, note:
 
 ### Phase 3 — Run Tests (or Parse Existing Report)
 
-**If user says "run and report"** — run with tag filter. Tag filtering uses @cypress/grep's `grepTags` (NOT `CYPRESS_TAGS`), the environment is selected via the `CYPRESS_ENV` **process env var** (the `--env` flag does not reach `cypress.config.js`), and the reporter comes from the config file — don't override it inline:
+**If user says "run and report"** — run with tag filter. Tag filtering uses `--expose grepTags=` on @cypress/grep v6+ (`--env grepTags` was the v5 form and is **silently ignored** on v6 — the run reports green while executing the whole suite). `CYPRESS_ENV` remains a **process env var**, and the reporter comes from the config file — don't override it inline:
 ```bash
 # Smoke only (fast)
-CYPRESS_ENV=local npx cypress run --env grepTags=@PR 2>&1 | tail -40
+CYPRESS_ENV=local npx cypress run --expose grepTags=@PR 2>&1 | tail -40
 
 # Full regression
-CYPRESS_ENV=local npx cypress run --env grepTags=@Regression 2>&1 | tail -40
+CYPRESS_ENV=local npx cypress run --expose grepTags=@Regression 2>&1 | tail -40
 
 # Specific module
 CYPRESS_ENV=local npx cypress run --spec "cypress/e2e/API/[module]/**/*.cy.js" 2>&1 | tail -40

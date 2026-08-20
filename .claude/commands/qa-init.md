@@ -83,9 +83,9 @@ After installing, run `npm audit` and apply `npm audit fix` for anything auto-fi
 "cy:run": "cypress run",
 "cy:api": "cypress run --spec 'cypress/e2e/API/**/*.cy.js'",
 "cy:ui": "cypress run --spec 'cypress/e2e/UI/**/*.cy.js'",
-"cy:pr": "cypress run --env grepTags=@PR",
-"cy:smoke": "cypress run --env grepTags=@Smoke",
-"cy:regression": "cypress run --env grepTags=@Regression",
+"cy:pr": "cypress run --expose grepTags=@PR",
+"cy:smoke": "cypress run --expose grepTags=@Smoke",
+"cy:regression": "cypress run --expose grepTags=@Regression",
 "cy:open": "cypress open"
 ```
 
@@ -109,7 +109,8 @@ module.exports = defineConfig({
         retries: { runMode: 1, openMode: 0 },
         setupNodeEvents(on, config) {
             require("cypress-mochawesome-reporter/plugin")(on);
-            require("@cypress/grep/src/plugin")(config);
+            const { plugin: cypressGrepPlugin } = require("@cypress/grep/plugin");
+            cypressGrepPlugin(config);
             on("task", require("./cypress/tasks"));
             // Append every run to the knowledge base — this is what makes flake
             // detection work (a test flipping pass/fail across runs is flaky).
@@ -149,8 +150,8 @@ module.exports = defineConfig({
 import "cypress-plugin-api";
 import "cypress-mochawesome-reporter/register";
 import "./commands";
-const registerGrep = require("@cypress/grep");
-registerGrep();
+const { register: registerCypressGrep } = require("@cypress/grep");
+registerCypressGrep();
 chai.use(require("chai-json-schema"));
 ```
 

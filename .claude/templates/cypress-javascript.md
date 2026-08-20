@@ -13,7 +13,7 @@ Read this file when `project.testFramework = "cypress"`. It defines the syntax, 
 | DB access | `cy.task("queryDb", sql)` / `cy.task("querySecondaryDb", sql)` — Node-side tasks in `cypress/tasks/` |
 | Schema assertion | `chai-json-schema` → `expect(body).to.be.jsonSchema(schema)` |
 | Data factory | `cypress/support/dataFactory.js` (@faker-js/faker) |
-| Tags | `it("...", { tags: ["@PR", "@Smoke"] }, ...)` via @cypress/grep; run with `--env grepTags=@PR` |
+| Tags | `it("...", { tags: ["@PR", "@Smoke"] }, ...)` via @cypress/grep; run with `--expose grepTags=@PR` (v6+ — `--env grepTags` is the v5 form and is silently ignored on v6) |
 | Reports | Mochawesome — HTML at `cypress/reports/html/index.html`, JSON under `cypress/reports/` |
 | Failure artifacts | `cypress/screenshots/` |
 | Run single spec | `npx cypress run --spec "<file>"` |
