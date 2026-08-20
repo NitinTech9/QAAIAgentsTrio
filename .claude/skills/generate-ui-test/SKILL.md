@@ -15,7 +15,7 @@ The user will describe a UI workflow — e.g. "write a UI test to create a new s
 
 ## FRAMEWORK FACTS
 
-**Base URL:** `http://localhost:4000` (from `cypress.config.js`)
+**Base URL:** `config.app.primaryBaseUrl` from `.claude/project-config.json` (mapped in `cypress.config.js`)
 
 **Custom commands available:**
 - `cy.loginAndGetSessionCookie()` — API-based login, sets `@sessionCookie` + `@csrfToken` aliases
@@ -50,7 +50,7 @@ Map each feature area to its module folder — keep this table in sync with your
 
 ## FILE NAMING
 
-**Branch check first:** if the current git branch name contains a Jira ticket ID (`[A-Z]+-[0-9]+`), place the spec in `cypress/e2e/JiraTicket/<TICKET>_<NUMBER>_<FeatureDescription>.cy.js` (e.g. `PROJ_17487_OverrideTaxCancellation.cy.js`). Otherwise:
+**Branch check first:** if the current git branch name contains a Jira ticket ID (`[A-Z]+-[0-9]+`) and `config.paths.jiraTicketTests` is set (it may be null), place the spec in `{config.paths.jiraTicketTests}/<TICKET>_<NUMBER>_<FeatureDescription>.cy.js` (e.g. `PROJ_17487_OverrideTaxCancellation.cy.js`). Otherwise:
 
 `[NN]-[action-description].cy.js`  
 No HTTP method prefix for UI tests. Short verb-noun description, kebab-case.
@@ -127,7 +127,7 @@ LoginPage.login(Cypress.env("LOGIN_EMAIL"), Cypress.env("LOGIN_PASSWORD"));
 **Role-gated feature (element/route visible only to certain roles — the EXCEPTION, not the default; most tickets run everything as the primary `LOGIN_EMAIL` user):**
 1. `@PR @Smoke` — Authorized user sees and can interact with the element
 2. `@Regression` — Unauthorized user does NOT see it (element absent or route Forbidden) — a positive-only test can never catch an over-exposure regression
-3. Repeat on EVERY screen the element appears on. Role users are auto-provisioned by the global `cy.ensureQaUsers()` prerequisite (primary via `LOGIN_EMAIL`, a restricted user via `NEGATIVE_LOGIN_EMAIL`, plus whatever role shapes your product defines — all log in with `LOGIN_PASSWORD`); add a new shape to `cypress/tasks/ensureQaUsers.js` if a test needs one.
+3. Repeat on EVERY screen the element appears on. **If** your suite has a role-provisioning task (e.g. a global `cy.ensureQaUsers()` that provisions the primary `LOGIN_EMAIL` user, a restricted `NEGATIVE_LOGIN_EMAIL` user, and any product-specific role shapes), use it and extend it when a new shape is needed. If it doesn't (fresh scaffolds don't include one) or `NEGATIVE_LOGIN_EMAIL` isn't in the env file, create the role users via your DB tasks/data factory in `before()` — or gate the restricted-user case with `this.skip()` and flag it in the output. Never silently drop the negative case.
 
 ---
 
@@ -144,7 +144,7 @@ LoginPage.login(Cypress.env("LOGIN_EMAIL"), Cypress.env("LOGIN_PASSWORD"));
 ## STRICT RULES
 
 - Always `cy.loginAndGetSessionCookie()` in `beforeEach` (not `before`), followed by `cy.visit()` to navigate — or a parameterized journey helper (`goToFeature(loginEmail)`) when tests run the same flow as different role users
-- Prefer selectors verified against the REAL DOM, in this order: **id** (`#btn-search`, `#major-radio`), then **label text** (`cy.contains("label", "Order Number")`), then **`name`**, then a stable **class** (`.badge`, `.s-alert-error`). **This app does NOT use `data-testid` — never assume it.** When unsure, inspect the running app or read the existing Page Object in `cypress/e2e/pages/` instead of guessing; put every selector in a Page Object, never inline in the spec
+- Prefer selectors verified against the REAL DOM. First check whether your app uses `data-testid` (look at existing Page Objects or the live DOM): if it does, prefer it; if it does not, **never assume it** — use this order instead: **id** (`#btn-search`, `#major-radio`), then **label text** (`cy.contains("label", "Order Number")`), then **`name`**, then a stable **class** (`.badge`, `.s-alert-error`). When unsure, inspect the running app or read the existing Page Object in `{config.paths.pages}` instead of guessing; put every selector in a Page Object, never inline in the spec
 - Never use `cy.wait(<number>)` — use `cy.get(...).should("be.visible")` to wait for elements
 - Never use `cy.logger()` — it does not exist; use `cy.log()` only for debug failure output
 - Tags: `{ tags: ["@PR", "@Smoke"] }` on happy path, `{ tags: ["@Regression"] }` on edge/negative cases
@@ -162,5 +162,6 @@ After writing files, show:
 
 Run command:
 ```bash
-npx cypress open --spec "cypress/e2e/UI/<path>/<file>.cy.js" --env CYPRESS_ENV=local
+CYPRESS_ENV=local npx cypress run --spec "cypress/e2e/UI/<path>/<file>.cy.js"
 ```
+(For interactive debugging, use `npx cypress open` and pick the spec in the GUI — `--spec` is a `run`-only flag.)

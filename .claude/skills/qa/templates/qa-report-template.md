@@ -13,7 +13,7 @@
 | Run by | `/qa` or `/qa-only` |
 | Branch | [git branch name] |
 | Environment | local / staging / uat |
-| Base URL | http://localhost:4000 |
+| Base URL | [config.app.primaryBaseUrl] |
 | Scope | All / Module: [name] / Tag: @PR @Smoke @Regression |
 | Total test files scanned | N |
 | Total `it()` blocks found | N |
@@ -158,7 +158,7 @@
 
 ---
 
-## Regression Comparison — `/qa` with `--regression` only
+## Regression Comparison — include when a previous baseline report exists (omit otherwise)
 
 | Metric | Baseline | Current | Delta |
 |---|---|---|---|

@@ -11,6 +11,8 @@ You are a Postman collection generator. You analyze API endpoints from source co
 
 **Before anything else**, read `.claude/project-config.json` and store all values. Then read `.claude/project-config.local.json` if it exists — merge its values over the base config (local takes precedence).
 
+**MCP note:** the Jira tool names in this file assume the Atlassian MCP server is registered as `atlassian`. If it is connected under a different name (e.g. the claude.ai connector), use the equivalent tools — match by tool name containing `atlassian`.
+
 Extract:
 - `project.postman.*` — `collectionsPath`, `authType`, `loginEndpoint`, `csrfEndpoint`
 - `project.paths.*` — `apiTests`, `uiTests`, `tasks`, `fixtures`, `ticketContext`, `manualCases`
@@ -39,7 +41,7 @@ Flags can be combined: `PROJ-1234 force pr:42 auto`
 
 ## Canonical Pipeline State
 
-Read `{config.paths.ticketContext}/TICKET_ID-pipeline-state.json` (canonical shape: `{ ticketId, steps: {...}, lastUpdated }`). If missing, create with:
+Read `{config.paths.ticketContext}/TICKET_ID-pipeline-state.json` (canonical shape: `{ ticketId, steps: {...}, locks: {}, lastUpdated }` — see `manual-test-generator.md`). If the file exists but `JSON.parse` fails (truncated / invalid), do NOT crash — back it up to `…-pipeline-state.corrupt.json`, announce it, and recreate the canonical shape. If missing, create with:
 
 ```json
 {
@@ -47,8 +49,10 @@ Read `{config.paths.ticketContext}/TICKET_ID-pipeline-state.json` (canonical sha
   "steps": {
     "fetch-ticket": "pending",
     "analyze-code": "pending",
-    "generate-postman-collection": "pending"
+    "generate-postman-collection": "pending",
+    "post-postman-to-jira": "pending"
   },
+  "locks": {},
   "lastUpdated": "<ISO timestamp>"
 }
 ```
@@ -104,12 +108,13 @@ Total: X requests across Y folders
 
 Ask:
 > **Collection ready for review.**
-> - Type `yes` or `done` to finalize and optionally post to Jira
+> - Type `yes` or `done` to finalize — this WILL post a Jira comment with the collection path
 > - Type `add <description>` to add a missing request (e.g. `add DELETE /api/orders/:id`)
 > - Type `remove <request name>` to remove a request
-> - Type `skip jira` to save the file without posting a Jira comment
+> - Type `skip jira` to finalize and save the file WITHOUT posting a Jira comment
+> - Type `cancel` to stop here — the file stays on disk, nothing is posted
 
-Handle feedback in a loop — update the collection file after each change, re-display the table, and ask again until approved.
+Handle feedback in a loop — update the collection file after each change, re-display the table, and ask again until approved or cancelled. After 5 feedback rounds, ask whether to finalize as-is or cancel rather than looping further.
 
 ## Post to Jira (Optional)
 
@@ -119,6 +124,7 @@ If the user approves **without** typing `skip jira`, post a comment using `mcp__
 - `contentFormat`: `markdown`
 
 After posting: `echo -e "\033[32m✔ Jira comment posted\033[0m"`
+Pipeline key: `post-postman-to-jira` — mark `done` after posting; mark `skipped (auto)` if `skip jira` was chosen or auto mode skipped it.
 
 ## Final Output
 

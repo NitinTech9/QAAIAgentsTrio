@@ -22,7 +22,7 @@ The user will provide a Jira ticket ID (e.g. `PROJ-1234`) in their message.
 
 **Wait for their response before proceeding.**
 
-Record it as `TICKET_ID`.
+Record it as `TICKET_ID`. If the message contains more than one match, or the only match looks like an incidental token rather than a ticket key (e.g. `SHA-256`, `COVID-19` in prose), confirm the intended ticket with the user before proceeding.
 
 ## Optional Flags
 
@@ -38,14 +38,14 @@ Flags can be combined: `PROJ-1234 force pr:42 auto`
 
 ## Canonical Pipeline State
 
-Every command reads/writes `steps.<key>` in `{config.paths.ticketContext}/TICKET_ID-pipeline-state.json`. Never put keys at the top level.
+Every command reads/writes `steps.<key>` in `{config.paths.ticketContext}/TICKET_ID-pipeline-state.json`. Never put keys at the top level. Step values are `"pending"`, `"done"`, or `"skipped (auto)"`.
 
 Check if the file exists.
 
 - If it exists **and `FORCE_MODE = true`**: read the file, reset ALL `steps` values to `"pending"`, set `lastUpdated` to current ISO timestamp, write it back, and announce: `🔄 Force mode — all pipeline steps reset to pending`.
 - If it exists **and `FORCE_MODE = false`**: read it. For every step below, **skip any that already show `done`**, announcing: `✔ [Step Name] already completed — skipping`.
 - If it exists **but `JSON.parse` fails** (truncated or hand-edited to invalid JSON): do NOT crash — copy it to `{config.paths.ticketContext}/TICKET_ID-pipeline-state.corrupt.json`, announce `⚠️ pipeline-state.json was unreadable — backed up to …corrupt.json and reinitialized`, then recreate the canonical shape below.
-- If it does not exist, create it with:
+- If it does not exist, create it (via the atomic-write snippet below — pass the full initial object as `<UPDATES_JSON>`) with:
 
 ```json
 {
@@ -70,7 +70,7 @@ Never Write/Edit the state file directly — a crash mid-write leaves corrupt JS
 ```bash
 node -e '
 const fs=require("fs"),p=process.argv[1],updates=JSON.parse(process.argv[2]);
-let s={};try{s=JSON.parse(fs.readFileSync(p,"utf8"))}catch(e){}
+let s={};try{s=JSON.parse(fs.readFileSync(p,"utf8"))}catch(e){if(fs.existsSync(p)){fs.copyFileSync(p,p+".corrupt.json");console.error("state unreadable — backed up to "+p+".corrupt.json");}}
 for(const [k,v] of Object.entries(updates)){
   s[k]=(v&&typeof v==="object"&&!Array.isArray(v))?{...s[k],...v}:v;
 }
@@ -82,13 +82,15 @@ const t=p+".tmp."+process.pid;fs.writeFileSync(t,JSON.stringify(s,null,2));fs.re
 
 `<UPDATES_JSON>` examples: mark a step done → `{"steps":{"fetch-ticket":"done"}}`; take a lock → `{"locks":{"manual":{"lockedBy":"manual-test-generator","lockedByUser":"<user>","lockedAt":"<ISO>"}}}`; release → `{"locks":{"manual":null}}`.
 
+Note: temp→rename prevents torn/corrupt files, and the fresh re-read narrows — but does not fully close — the read-modify-write window between concurrently writing domains. Keep each state update small and immediate; never hold a long read-modify-write cycle open.
+
 ## Run Lock (enforced — replaces the old "don't run in parallel" warnings)
 
 Each agent owns one lock **domain** in `locks`: `manual` (this agent), `api`, `ui`, `postman`. Domains are independent — API and UI automation for the same ticket MAY run in parallel; two runs in the **same** domain may not.
 
 1. **Acquire (before any step, right after the state file is read/created):** if `locks[<domain>]` exists, is not yours, and `lockedAt` is **less than 60 minutes old** → stop:
    > "⛔ TICKET_ID is locked by <lockedBy> (started <lockedAt> by <lockedByUser>). If that run is dead, re-run with `force-lock`."
-   If the lock is **older than 60 minutes**, announce `⚠️ Stale lock from <lockedBy> (<lockedAt>) — overriding` and take it. Then write your lock via the atomic snippet, with `lockedBy` = your agent name and `lockedByUser` = `git config user.name || whoami` (auto-captured — never ask the user for an ID).
+   If the lock is **older than 60 minutes**, announce `⚠️ Stale lock from <lockedBy> (<lockedAt>) — overriding` and take it. Then write your lock via the atomic snippet, with `lockedBy` = your agent name and `lockedByUser` = `git config user.name || whoami` (auto-captured — never ask the user for an ID). Finally **re-read the file and verify your lock won** — the acquire check and the write are not one atomic operation, so if another run's lock is there instead, treat the ticket as locked and stop.
 2. **Refresh:** every step-completion write also rewrites your lock with a fresh `lockedAt` (include both in one `<UPDATES_JSON>`), so a healthy long run never looks stale.
 3. **Release:** the final state write of the run sets `{"locks":{"<domain>":null}}` — including when the run ends early on a gate/stop (release before stopping).
 4. **`force-lock` flag** (all agents): override a fresh same-domain lock — only when the user explicitly passes it.

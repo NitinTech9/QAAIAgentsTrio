@@ -41,7 +41,7 @@ Minor correctness issue, test hygiene, or naming inconsistency that does not aff
 Examples:
 - Test case description says "returns 200" but asserts `oneOf([200, 201])`
 - File missing zero-padding in name (`1-loginAPI.cy.js` instead of `01-post-login.cy.js`)
-- `cy.logger()` used instead of `cy.log()` — slows down runs
+- `cy.logger()` used — not a real Cypress command; replace with `cy.log()`
 - Commented-out test cases never uncommented
 
 ---
@@ -149,8 +149,4 @@ Category: Auth & Security | Request/Contract | Response/Assertion | Database/Sta
 Sub-type: [from table above]
 ```
 
-When computing the health score, weight by severity:
-- Critical issue: −25 points from the relevant dimension
-- High: −15
-- Medium: −8
-- Low: −3
+The health score itself is computed by the weighted-dimension formula defined in the `/qa` and `/qa-only` skills — do NOT apply per-issue point deductions on top of it. Use **severity** to rank the "Top Priority Issues" list and decide fix order, and **category/sub-type** to fill the report's classification fields.

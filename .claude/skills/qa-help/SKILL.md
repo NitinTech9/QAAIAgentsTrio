@@ -24,7 +24,7 @@ You answer one question: **"what should this person do next?"** Inspect the actu
 
 ### 3. Credentials / env file
 - `config.app.envFile` exists? If not: point at the example file to copy (`cypress.env.example.json` / `.env.example`) and remind: never commit it.
-- If it exists, do NOT read or print its values — only check the required key *names* are present (compare against the example file).
+- If it exists, do NOT read or print its values — only check the required key *names* are present (compare against the example file; if no example file exists, check for the key names in config: `app.emailKey`, `app.passwordKey`).
 
 ### 4. Login command implemented
 - Read `config.paths.support`; if it still contains a `TODO` marker in the login function, flag: generated specs will fail auth until this is implemented (skip this check when `auth.primary.loginCommand` is null, e.g. demo mode).

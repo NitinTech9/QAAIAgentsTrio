@@ -11,9 +11,11 @@ You perform a full test coverage audit by comparing the swagger.json API spec ag
 
 ## STEP 1 — Load the swagger specs
 
-Read the swagger file(s):
-- **Primary app:** `cypress/fixtures/swagger.json`
-- **Secondary app (if your suite tests one):** `cypress/fixtures/secondary-swagger.json`
+Read `.claude/project-config.json` first — the swagger paths come from config:
+- **Primary app:** `config.paths.swaggerPrimary`
+- **Secondary app (if your suite tests one):** `config.paths.swaggerSecondary`
+
+If `swaggerPrimary` is null or the file doesn't exist, stop and tell the user: coverage auditing needs a swagger/OpenAPI spec — export one from the backend and set `paths.swaggerPrimary` in `.claude/project-config.json`.
 
 Extract every endpoint as: `METHOD /path` (e.g. `GET /api/stores`, `POST /api/orders`)
 
@@ -23,12 +25,14 @@ If there are two backends, keep their endpoints separate in the analysis.
 
 ## STEP 2 — Scan existing test files
 
-Use the Glob tool to find all test files:
+Use the Glob tool to find all test files under `config.paths.apiTests`:
 ```
-pattern: "cypress/e2e/API/**/*.cy.js"
+pattern: "{config.paths.apiTests}/**/*.cy.js"     (Cypress; use the template's spec glob for Playwright)
 ```
 
-For each file, read it and extract the `cy.api({ method, url })` calls to build a list of covered endpoints.
+If `cypress/knowledge/api-catalog.json` exists, use it as the primary endpoint→spec map and verify it by scanning — it is the suite's source of truth for what is covered where.
+
+For each file, read it and extract the `cy.api({ method, url })` calls to build a list of covered endpoints. Also catch `cy.request(...)` calls and template-literal URLs where practical — and note in the report that endpoints exercised through helpers may be under-counted.
 
 Separate tests by backend (if there are two):
 - Files in the secondary app's module folder (e.g. `cypress/e2e/API/<secondary-app>-module/`) → secondary coverage
@@ -43,7 +47,7 @@ For each swagger endpoint, classify as:
 | Status | Meaning |
 |---|---|
 | ✅ Covered | A test file exists with at least one happy-path test case |
-| ⚠️ Partial | File exists but only has 1 test case or only negative tests |
+| ⚠️ Partial | File exists but has only 1 test case, or has no happy-path case (every case is tagged `@Regression` only) |
 | ❌ Missing | No test file or test case found for this endpoint |
 
 ---

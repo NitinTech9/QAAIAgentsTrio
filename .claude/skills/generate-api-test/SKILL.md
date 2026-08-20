@@ -18,7 +18,7 @@ The user provides ONE of:
 
 ## FRAMEWORK FACTS (memorise these — do not deviate)
 
-**Base URL:** `http://localhost:4000` (configured in `cypress.config.js` via `CYPRESS_ENV`)
+**Base URL:** `config.app.primaryBaseUrl` from `.claude/project-config.json` (selected at runtime in `cypress.config.js` via the `CYPRESS_ENV` **process env var** — not the `--env` flag)
 
 **Auth — two types:**
 1. **Session auth** (all `/api/*` endpoints) — `cy.loginAndGetSessionCookie()` → aliases `@sessionCookie` + `@csrfToken`
@@ -95,7 +95,7 @@ Parse from curl:
 - URL path (strip base URL, keep path + query params)
 - Body (`-d` or `--data`)
 - Auth detection:
-  - Session cookie / port matching the **secondary app** (if your suite has one) → secondary session auth — use `cy.loginToSecondaryApp()` → `@secondarySessionCookie`
+  - Session cookie / port matching the **secondary app** (if your suite has one) → secondary session auth — use `config.auth.secondary.loginCommand` and its `sessionCookieAlias`
   - Session cookie / port matching the **primary app** → primary session auth — use `cy.loginAndGetSessionCookie()` → `@sessionCookie` + `@csrfToken`
   - Has `Authorization: Bearer` → bearer token auth
 
@@ -205,15 +205,17 @@ describe("Test Scenario: [Feature Name] API Tests", () => {
 **POST create**:
 1. `@PR @Smoke` — Creates resource, returns 200/201 with ID
 2. Response has expected fields
-3. `@Regression` — Missing required field returns 400/422
-4. `@Regression` — 401/403 without session
-5. `after()` cleanup via DB task
+3. `@DataValidation` — DB row exists after the call (`cy.task("queryDb", ...)`) — required on **every mutation** unless `project.dbVerification` is `false`
+4. `@Regression` — Missing required field returns 400/422
+5. `@Regression` — 401/403 without session
+6. `after()` cleanup via DB task
 
 **PUT/PATCH update**:
 1. `@PR @Smoke` — Updates successfully
-2. `@Regression` — 404 for non-existent ID
-3. `@Regression` — Validation error for bad data
-4. `@Regression` — 401/403 without session
+2. `@DataValidation` — DB row reflects the update — required on **every mutation** unless `project.dbVerification` is `false`
+3. `@Regression` — 404 for non-existent ID
+4. `@Regression` — Validation error for bad data
+5. `@Regression` — 401/403 without session
 
 **PUT cancel/status-change** (business flow):
 1. Query DB in `before()` for a record in the right state
@@ -222,6 +224,10 @@ describe("Test Scenario: [Feature Name] API Tests", () => {
 4. `@Regression` — Missing required fields returns 400/422
 5. `@Regression` — Non-existent ID returns 404/400
 6. `@Regression` — 401/403 without session
+
+**Schema validation:** the testing standards require a schema-validation spec per API. If the endpoint returns a 200 JSON body and no schema spec exists yet, also add the schema fixture under `{config.paths.fixtures}/schemas/` and a spec under `{config.paths.apiTests}/schema-validation/` — or explicitly list it as a follow-up in the output.
+
+**If `project.dbVerification` is `false`:** the suite has no direct DB access — omit the `before()`/`after()` DB blocks and the `@DataValidation` cases, and note the degraded standard in the output.
 
 ---
 
@@ -248,7 +254,7 @@ After writing files, show:
 
 Then the run command:
 ```bash
-npx cypress run --spec "cypress/e2e/API/<path>/<file>.cy.js" --env CYPRESS_ENV=local
+CYPRESS_ENV=local npx cypress run --spec "cypress/e2e/API/<path>/<file>.cy.js"
 ```
 
 Finally, **write back to the knowledge base** if you learned anything new: a quirk / 5xx →

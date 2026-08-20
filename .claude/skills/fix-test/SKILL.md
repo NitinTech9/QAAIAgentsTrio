@@ -20,6 +20,8 @@ The user will provide EITHER:
 
 ### Step 0 — Check the knowledge base for a known pattern
 
+(The knowledge folder is `config.paths.knowledge`, default `cypress/knowledge/`. If unset or missing, skip Step 0 and diagnose normally.)
+
 Before diagnosing from scratch, read `cypress/knowledge/failure-patterns.json` (`patterns`) and
 match the error string against a known `FP-###`. If it matches, apply that pattern's documented
 `fix` directly — this is the fastest, already-proven path (see `cypress/knowledge/_README.md` →
@@ -54,9 +56,11 @@ Read the test file being referenced. Look at:
 
 ### Step 3 — Check the swagger for correct field names
 
-Key schemas to reference:
-- **Primary app endpoints:** `cypress/fixtures/swagger.json`
-- **Secondary app endpoints (if any):** `cypress/fixtures/secondary-swagger.json`
+Key schemas to reference (paths from `.claude/project-config.json`):
+- **Primary app endpoints:** `config.paths.swaggerPrimary` (e.g. `cypress/fixtures/swagger.json`)
+- **Secondary app endpoints (if any):** `config.paths.swaggerSecondary`
+
+If the swagger path is null or the file is missing, fall back to the fixture schemas and existing passing specs for correct field names.
 
 Determine which swagger to use based on the test file location:
 - Specs under the secondary app's module folder (e.g. `cypress/e2e/API/<secondary-app>-module/**`) → use secondary-swagger.json
@@ -114,15 +118,16 @@ cy.get("@csrfToken").then((token) => { csrfToken = token; });
 headers: { Cookie: sessionCookie, "x-csrf-token": csrfToken }
 ```
 
-**before() hook async issue (variables not set):**
+**before() hook — often misdiagnosed as an async issue:**
 ```javascript
-// Wrong — both tasks run but contractId may not be set when 2nd task reads it
+// This pattern is FINE — Cypress queues the tasks sequentially, so both
+// variables are set before any test runs. Do not "fix" it with waits.
 before(() => {
     cy.task("queryDb", sql1).then((rows) => { contractId = rows[0].id; });
     cy.task("queryDb", sql2).then((rows) => { reasonId = rows[0].id; });
 });
-// Correct — Cypress chains these sequentially automatically, this is fine
-// But ensure you're reading the right field: rows[0].id not rows[0].contract_id
+// The REAL bug in hooks like this is usually reading a field the query
+// didn't select — e.g. rows[0].contract_id when the query selected `id`.
 ```
 
 ---

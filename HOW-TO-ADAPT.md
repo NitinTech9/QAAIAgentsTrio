@@ -8,7 +8,7 @@ This guide explains how to take the QA agents framework in this repo and adapt i
 
 ## Step 1 -- Clone or Fork This Repo
 
-Copy the entire repo structure. The key directories are:
+Copy the `.claude/` folder and the docs into your test repo (this repo ships only the framework — the `cypress/` tree below is not included; `/qa-init` scaffolds it, or your existing suite provides it). The structure you'll end up with:
 
 ```
 .claude/
