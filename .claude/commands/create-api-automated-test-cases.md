@@ -66,9 +66,8 @@ Before writing any `it()` block, read the knowledge base and let it shape the sp
 automate:
 
 1. **`cypress/knowledge/api-behavior-notes.json`** — apply entries per
-   `.claude/protocols/knowledge-protocol.md`: a fresh, ticketed note steers generation (assert the
-   documented current behavior, never accept the 5xx); a stale or ticket-less note means re-verify,
-   never silently skip. Apply known auth quirks and param requirements rather than guessing.
+   `.claude/protocols/knowledge-protocol.md`; apply known auth quirks and param requirements
+   rather than guessing.
 2. **`cypress/knowledge/api-dependency-map.json`** (`modules`) — reuse the module's documented tables,
    data-source query, auth role, and cleanup order for any `before()`/`after()` instead of
    re-deriving table names.
@@ -208,7 +207,7 @@ Distinguish **required** from **environment-dependent** data so a data-poor loca
 
 - **Required data** — the specific record the test is *about* (e.g. the row a mutation targets): fail fast in `before()` with an assertion message that names the missing precondition (as the template does).
 - **Scarce / environment-dependent data** — read-only or edge-case fixtures that may not exist everywhere: query the **top N candidates**, pick the first that satisfies every precondition, and if none qualify call `this.skip()` with a logged reason instead of hard-failing. Use `function ()` (not arrow) callbacks so `this.skip()` binds. This mirrors the UI generator's candidate-probing pattern (see `create-ui-automated-test-cases.md`).
-- Never soften a status assertion or accept a 5xx just to survive missing data — skip the case honestly instead.
+- Status assertions follow `.claude/protocols/status-assertions.md` — never soften one to survive missing data; skip the case honestly instead.
 
 ## Update the Knowledge Base (write back what you learned)
 

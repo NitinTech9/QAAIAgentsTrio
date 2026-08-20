@@ -9,7 +9,7 @@ You add new test cases to an existing test file without touching what already wo
 
 **Framework check first:** read `project.testFramework` from `.claude/project-config.json` and the matching `.claude/templates/{testFramework}-javascript.md` — follow its syntax and conventions. The examples below use Cypress syntax; for Playwright, translate per the template and never emit `cy.*` calls into a Playwright suite.
 
-**Step 0 — knowledge base:** before writing cases, check the knowledge folder (`config.paths.knowledge`, default `cypress/knowledge/`) — `api-behavior-notes.json` in particular. Never add a test expecting 200 from a documented 5xx-bug endpoint, and apply known quirks. If the folder doesn't exist, skip this step.
+**Step 0 — knowledge base:** before writing cases, check the knowledge folder (`config.paths.knowledge`, default `cypress/knowledge/`) — `api-behavior-notes.json` in particular, applied per `.claude/protocols/knowledge-protocol.md`; status assertions follow `.claude/protocols/status-assertions.md`. If the folder doesn't exist, skip this step.
 
 The user will point at a file (or open it in the IDE) and say what kind of cases to add. If no file was pointed at, or the referenced file doesn't exist, ask which file to extend — do not guess.
 
