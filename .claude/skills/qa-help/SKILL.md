@@ -30,7 +30,7 @@ You answer one question: **"what should this person do next?"** Inspect the actu
 - Read `config.paths.support`; if it still contains a `TODO` marker in the login function, flag: generated specs will fail auth until this is implemented (skip this check when `auth.primary.loginCommand` is null, e.g. demo mode).
 
 ### 5. MCP connections (only matters for the agent pipeline)
-- Jira agents need Atlassian MCP tools (names contain `atlassian`); `@ui-automation-test-generator` also needs browser MCP tools (names contain `claude-in-chrome`). Check whether such tools are available to you right now; if not, mark ⚠ with: connect via `/mcp` (CLI) or claude.ai connector settings. Local skills (`/qa`, `/generate-api-test`, …) work without them.
+- Jira agents need Atlassian MCP tools (names contain `atlassian`); `@ui-automation-test-generator` also needs browser MCP tools (names contain `claude-in-chrome`). Check whether such tools are available to you right now; if not, mark ⚠ with: connect via `/mcp` (CLI) or claude.ai connector settings. Local skills (`/qa-run`, `/generate-api-test`, …) work without them.
 
 ### 6. Environment preflight
 - Don't duplicate `/doctor` — just check whether the backend at `config.app.primaryBaseUrl` answers (`curl -s -o /dev/null -w "%{http_code}"`). Down → point at `/doctor` for the full diagnosis.

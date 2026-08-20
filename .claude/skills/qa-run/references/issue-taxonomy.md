@@ -1,6 +1,6 @@
 # QA Issue Taxonomy
 
-Reference for classifying every issue found during a `/qa` or `/qa-only` run.
+Reference for classifying every issue found during a `/qa-run` or `/qa-audit` run.
 Always assign both a **severity** and a **category** to every issue.
 
 ---
@@ -149,4 +149,4 @@ Category: Auth & Security | Request/Contract | Response/Assertion | Database/Sta
 Sub-type: [from table above]
 ```
 
-The health score itself is computed by the weighted-dimension formula defined in the `/qa` and `/qa-only` skills — do NOT apply per-issue point deductions on top of it. Use **severity** to rank the "Top Priority Issues" list and decide fix order, and **category/sub-type** to fill the report's classification fields.
+The health score itself is computed by the weighted-dimension formula defined in the `/qa-run` and `/qa-audit` skills — do NOT apply per-issue point deductions on top of it. Use **severity** to rank the "Top Priority Issues" list and decide fix order, and **category/sub-type** to fill the report's classification fields.

@@ -295,7 +295,7 @@ flowchart TB
 
     subgraph T1["⚡ TIER 1 · SKILLS — no ticket required"]
         direction TB
-        S1["/qa · /qa-only<br/><small>run, fix, report</small>"]
+        S1["/qa-run · /qa-audit<br/><small>run, fix, report</small>"]
         S2["/fix-test<br/><small>paste an error</small>"]
         S3["/generate-api-test · /generate-ui-test<br/><small>from a PR, curl, or description</small>"]
         S4["/audit-coverage<br/><small>what isn't tested</small>"]
@@ -480,12 +480,12 @@ Add negative tests and DB verification to cypress/e2e/API/orders-module/01-get-o
 
 ---
 
-### /qa -- Full QA Cycle (Run + Fix + Report)
+### /qa-run -- Full QA Cycle (Run + Fix + Report)
 
 Runs the entire test suite, fixes failures, adds regression tests, and produces a health report.
 
 ```
-/qa
+/qa-run
 ```
 
 **What it does (7 phases):**
@@ -505,12 +505,12 @@ Runs the entire test suite, fixes failures, adds regression tests, and produces 
 
 ---
 
-### /qa-only -- Read-Only Health Check
+### /qa-audit -- Read-Only Health Check
 
-Same analysis as `/qa` but **never modifies any code**. Safe to run anytime.
+Same analysis as `/qa-run` but **never modifies any code**. Safe to run anytime.
 
 ```
-/qa-only
+/qa-audit
 ```
 
 **What it produces:**
@@ -1559,8 +1559,8 @@ cypress/
 | PR just came in, need quick API tests | `/generate-api-test` + paste PR number or curl | Skill |
 | A test is failing, need to fix it | `/fix-test` + paste the error | Skill |
 | Want to add edge cases to an existing file | `/add-test-cases` on the file | Skill |
-| Before release, check test health | `/qa-only` | Skill |
-| Before release, fix all failures | `/qa` | Skill |
+| Before release, check test health | `/qa-audit` | Skill |
+| Before release, fix all failures | `/qa-run` | Skill |
 | Planning what to automate next | `/audit-coverage` | Skill |
 | Need a Postman collection for an endpoint | `@postman-collection-generator TKT-123` | Agent |
 | Want to re-run just the tests for a ticket | `/run-tests TKT-123 api headless local` | Command |
@@ -1583,10 +1583,10 @@ flowchart TD
 
     START -->|"something<br/>is broken"| B{"How much?"}
     B -->|"one test"| B1["/fix-test<br/><small>paste the error</small>"]
-    B -->|"the whole suite"| B2["/qa<br/><small>run, fix, commit, report</small>"]
+    B -->|"the whole suite"| B2["/qa-run<br/><small>run, fix, commit, report</small>"]
 
     START -->|"I want a report,<br/>not changes"| R{"About what?"}
-    R -->|"what is failing"| R1["/qa-only<br/><small>read-only audit</small>"]
+    R -->|"what is failing"| R1["/qa-audit<br/><small>read-only audit</small>"]
     R -->|"what is untested"| R2["/audit-coverage"]
 
     START -->|"I don't know /<br/>something is off"| H["/qa-help<br/><small>inspects your real setup<br/>and tells you the next step</small>"]
@@ -1661,10 +1661,10 @@ Before cutting a release, check the test suite health:
 
 ```bash
 # Read-only audit first
-/qa-only
+/qa-audit
 
 # If failures found, auto-fix them
-/qa
+/qa-run
 
 # Check what endpoints still lack test coverage
 /audit-coverage
@@ -2042,6 +2042,6 @@ rm docs/.ticket-context/TKT-123-pipeline-state.json
 
 ### What gets committed to git?
 
-- `/qa` makes atomic commits for each fix: `fix(qa): <file>:TC-NN -- <root cause>`
+- `/qa-run` makes atomic commits for each fix: `fix(qa): <file>:TC-NN -- <root cause>`
 - All other skills/commands create or edit files but **do not commit** -- you review and commit yourself
 - Agents create spec files but do not commit them

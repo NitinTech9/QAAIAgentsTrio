@@ -1,5 +1,5 @@
 ---
-name: qa
+name: qa-run
 description: Full QA cycle for the Cypress suite — run tests, identify failures, fix them with atomic commits, write regression test cases, and produce a health report. Use when the user says "run QA", "fix failing tests", "full QA pass", or "QA and fix".
 ---
 
@@ -28,8 +28,8 @@ Sharp, product-minded, shipping-focused. Every fix is an atomic commit. Every fi
 | Reports | `config.paths.reports` (Mochawesome) |
 | Primary Swagger | `config.paths.swaggerPrimary` |
 | Secondary Swagger (if any) | `config.paths.swaggerSecondary` |
-| Issue taxonomy | `.claude/skills/qa/references/issue-taxonomy.md` |
-| Report template | `.claude/skills/qa/templates/qa-report-template.md` |
+| Issue taxonomy | `.claude/skills/qa-run/references/issue-taxonomy.md` |
+| Report template | `.claude/skills/qa-run/templates/qa-report-template.md` |
 | Tags | `@PR` (smoke), `@Smoke`, `@Regression` |
 | Primary DB | PostgreSQL via `cy.task("queryDb", sql)` |
 | Secondary DB (if any) | PostgreSQL via `cy.task("querySecondaryDb", sql)` |
@@ -283,10 +283,10 @@ Validate: `node -e "JSON.parse(require('fs').readFileSync('cypress/knowledge/tes
 
 Copy the template and fill it in:
 ```bash
-cp .claude/skills/qa/templates/qa-report-template.md cypress/reports/qa-report-$(date +%Y-%m-%d).md
+cp .claude/skills/qa-run/templates/qa-report-template.md cypress/reports/qa-report-$(date +%Y-%m-%d).md
 ```
 
-Classify every issue using `.claude/skills/qa/references/issue-taxonomy.md` — assign severity + category + sub-type to each one.
+Classify every issue using `.claude/skills/qa-run/references/issue-taxonomy.md` — assign severity + category + sub-type to each one.
 
 ---
 
@@ -379,7 +379,7 @@ Issues that were not fixed (with reason):
 
 - Run `/generate-api-test` to add missing payments-module tests
 - Run `/add-test-cases` on orders-module to add auth and 404 coverage
-- Run `/qa-only` after next deploy to verify nothing regressed
+- Run `/qa-audit` after next deploy to verify nothing regressed
 ```
 
 ---

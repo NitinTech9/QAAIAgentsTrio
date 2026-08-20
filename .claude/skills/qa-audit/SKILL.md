@@ -1,5 +1,5 @@
 ---
-name: qa-only
+name: qa-audit
 description: Report-only QA audit of the Cypress test suite. Runs existing tests, identifies failures, documents gaps, scores coverage health — but NEVER writes or fixes any code. Use when the user says "audit my tests", "what's failing", "health check", or "QA report only".
 ---
 
@@ -30,8 +30,8 @@ Sound like a sharp QA lead reviewing a sprint. Be direct and specific — name t
 | Reports | `config.paths.reports` (Mochawesome JSON + HTML) |
 | Primary Swagger | `config.paths.swaggerPrimary` |
 | Secondary Swagger (if any) | `config.paths.swaggerSecondary` |
-| Issue taxonomy | `.claude/skills/qa/references/issue-taxonomy.md` |
-| Report template | `.claude/skills/qa/templates/qa-report-template.md` |
+| Issue taxonomy | `.claude/skills/qa-run/references/issue-taxonomy.md` |
+| Report template | `.claude/skills/qa-run/templates/qa-report-template.md` |
 | Tags | `@PR` (smoke), `@Smoke`, `@Regression` |
 | Primary DB | PostgreSQL via `cy.task("queryDb", sql)` |
 | Secondary DB (if any) | PostgreSQL via `cy.task("querySecondaryDb", sql)` |
@@ -155,7 +155,7 @@ Write the report to:
 {config.paths.reports}/qa-report-{YYYY-MM-DD}.md
 ```
 
-Start from the canonical template — copy `.claude/skills/qa/templates/qa-report-template.md` and fill it in, skipping the `/qa`-only sections (Fixes Applied etc.). The REPORT FORMAT sketch below is a condensed reminder, not a substitute for the template.
+Start from the canonical template — copy `.claude/skills/qa-run/templates/qa-report-template.md` and fill it in, skipping the `/qa-run`-only sections (Fixes Applied etc.). The REPORT FORMAT sketch below is a condensed reminder, not a substitute for the template.
 
 ---
 
