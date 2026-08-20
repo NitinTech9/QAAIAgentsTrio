@@ -93,9 +93,10 @@ Re-running is safe and idempotent. `--force` replaces conflicts and backs up the
 rename one side before you start using the pipeline — otherwise Claude Code sees two commands with
 the same name and may pick either.
 
-**Starting from nothing?** Stop here and run `/qa-init`. It interviews you (Cypress or Playwright,
-one backend or two, database access, tracker) and writes the folder structure *and* the config for
-you. Then skip to **Step 7**.
+**Starting from nothing?** Stop here and run `/qa-init`. It interviews you (Cypress, or Playwright —
+**experimental**: the Playwright path is translated per-run from Cypress-oriented instructions and
+is not covered by `/qa-selftest`; one backend or two, database access, tracker) and writes the
+folder structure *and* the config for you. Then skip to **Step 7**.
 
 ---
 

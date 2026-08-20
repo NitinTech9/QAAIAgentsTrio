@@ -231,9 +231,11 @@ the tracker writes too).
 
 ### Good to know
 
-- Test frameworks supported out of the box: **Cypress + JavaScript** and **Playwright + JavaScript**,
-  selected by `project.testFramework`. Cypress is the most battle-tested path. Adding another means
-  writing one fact sheet in `.claude/templates/`.
+- Test frameworks: **Cypress + JavaScript** (battle-tested — the path everything is verified against)
+  and **Playwright + JavaScript** (**experimental** — generation relies on per-run translation of
+  Cypress-oriented instructions and is not exercised by `/qa-selftest`; review its output more
+  carefully). Selected by `project.testFramework`. Adding another framework means writing one fact
+  sheet in `.claude/templates/`.
 - No credentials live in this repository. Tests read them from your own git-ignored environment
   file.
 - Machine-specific paths belong in `project-config.local.json` and `settings.local.json` — both

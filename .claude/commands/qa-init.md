@@ -50,7 +50,7 @@ If `$ARGUMENTS` contains `demo`, skip the interview entirely and set up a try-it
 
 If `$ARGUMENTS` names a framework (`cypress` or `playwright`), use it; otherwise ask. Batch the questions with AskUserQuestion:
 
-1. **Framework** — `Cypress + JavaScript (Recommended)` (richest template support in this repo) | `Playwright + JavaScript`.
+1. **Framework** — `Cypress + JavaScript (Recommended)` (richest template support in this repo) | `Playwright + JavaScript (EXPERIMENTAL)` — the Playwright path relies on per-run translation of Cypress-oriented instructions and is not exercised by `/qa-selftest`; expect rough edges and review generated specs more carefully.
 2. **Backends** — `One backend` | `Two backends (primary + secondary)`.
 3. **Primary base URL** — offer `http://localhost:4000` and `http://localhost:3000`; free text via Other. (If two backends, also ask for the secondary URL.)
 4. **DB verification** — `PostgreSQL (Recommended)` (enables the DB-assertion-on-mutation standard) | `None` (DB checks degrade to API-level verification — note this weakens the testing standards).
