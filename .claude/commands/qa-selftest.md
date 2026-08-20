@@ -8,7 +8,7 @@ argument-hint: '[optional: quick|keep]'
 
 You verify that **the framework itself** still works — not the product under test. Everything runs offline: no Jira, no browser, no backend, no network. Use the bundled fixtures in `.claude/selftest/`.
 
-**Flags:** `quick` — run Phases 1–3 only (deterministic checks, ~no generation cost). `keep` — leave Phase 4's dry-run artifacts in place for inspection instead of cleaning up.
+**Flags:** `quick` — run Phases 1–3 only (deterministic checks, ~no generation cost). `keep` — leave Phase 4/5 artifacts in place for inspection instead of cleaning up. `golden` — also run Phase 5, the golden-corpus comparison (generation cost: one spec per golden ticket).
 
 **Principles:**
 - Test what is actually shipped: whenever a phase needs a script or protocol, **extract it from the command file it lives in** (e.g. the gate scripts from `validate-spec.md`, the atomic-write snippet from `manual-test-generator.md`) — never use a copy embedded here, or drift would go undetected.
@@ -103,15 +103,28 @@ Runs the real generation pipeline offline against `SELFTEST-1`. **Precondition:*
 5. **Validate:** read and execute `.claude/commands/validate-spec.md` with `$ARGUMENTS = "SELFTEST-1 api"` → must finish with no hard-gate hits. Skip `create-schema-validation` (it requires capturing live 200 responses — impossible offline; note it).
 6. **Cleanup (unless `keep`):** delete every SELFTEST-1 artifact this phase created — seeded context files, pipeline state (`SELFTEST-1-pipeline-state.json`), the generated spec(s), any drafts — and list each deleted path. With `keep`, list the retained paths instead.
 
+## Phase 5 — Golden-corpus comparison (only with `golden`)
+
+Measures generated OUTPUT against committed reference outputs — the corpus, its accepted specs, and its honest scope statement live in `.claude/selftest/golden/README.md`. Same precondition and cleanup discipline as Phase 4.
+
+For each golden ticket (`SELFTEST-1` uses the root fixtures; `SELFTEST-2`/`SELFTEST-3` have their trio in their own folder):
+
+1. **Seed** the ticket's context files into `{config.paths.ticketContext}/` (`<KEY>.json`, `<KEY>-analysis.md`) and its manual cases into `{config.paths.manualCases}/<KEY>.md`.
+2. **Generate:** read and execute `.claude/commands/create-api-automated-test-cases.md` with the ticket key. Endpoints are fictional — never probe them.
+3. **Check:** `node scripts/golden-check.js <generated-spec> .claude/selftest/golden/<KEY>/checklist.md` — every MISSING line is a required semantic element the generation dropped. Then print `diff -u <accepted-spec> <generated-spec>` as a reference comparison (informational — differences are for judgment, only the MISSING lines are findings).
+4. **Report** per ticket: missing-element count and the diff summary. Be explicit that present ≠ correct — this phase catches dropped requirements, not wrong assertions.
+5. **Cleanup** (unless `keep`): delete every seeded context file, pipeline state, and generated spec, listing each path.
+
 ## Report
 
 ```
 # QA Framework Self-Test — <date>
 
 Phase 1 — Static integrity:        PASS (NN checks)
-Phase 2 — Hard-gate validators:    PASS (8/8 expectations)
+Phase 2 — Spec gate scanners:      PASS (all harness assertions)
 Phase 3 — State & locking:         PASS (6/6)
 Phase 4 — Pipeline dry-run:        PASS | SKIPPED (<reason>) | FAIL
+Phase 5 — Golden corpus:           N/M required elements present per ticket | SKIPPED (no `golden` flag)
 
 Verdict: ✅ framework healthy — safe to point at real tickets
 ```

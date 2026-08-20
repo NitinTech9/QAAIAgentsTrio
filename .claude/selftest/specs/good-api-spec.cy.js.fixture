@@ -41,6 +41,19 @@ describe("Test Scenario: SELFTEST-1 Widgets API Tests", () => {
         });
     });
 
+    it("[SELFTEST-1] Test Case 04: Validate POST /api/widgets with missing name returns 400", { tags: ["@Regression"] }, () => {
+        cy.api({
+            method: "POST",
+            url: "/api/widgets",
+            headers: { Cookie: sessionCookie, "x-csrf-token": csrfToken },
+            body: {},
+            failOnStatusCode: false,
+        }).then((response) => {
+            expect(response.status).to.equal(400);
+            expect(response.body.error).to.equal("name is required");
+        });
+    });
+
     it("[SELFTEST-1] Test Case 03: Validate unauthenticated request returns 401 or 403", { tags: ["@Regression"] }, () => {
         cy.clearCookies();
         cy.api({

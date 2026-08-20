@@ -49,6 +49,16 @@ jobs:
       - name: No dangling framework references in .claude markdown
         run: node scripts/check-references.js
 
+      - name: Golden corpus self-consistency (accepted specs satisfy their checklists and the gates)
+        run: |
+          fail=0
+          node scripts/golden-check.js .claude/selftest/specs/good-api-spec.cy.js.fixture .claude/selftest/golden/SELFTEST-1/checklist.md || fail=1
+          for d in .claude/selftest/golden/SELFTEST-2 .claude/selftest/golden/SELFTEST-3; do
+            node scripts/golden-check.js "$d/accepted-spec.cy.js.fixture" "$d/checklist.md" || fail=1
+            node scripts/gates/index.js "$d/accepted-spec.cy.js.fixture" || fail=1
+          done
+          exit $fail
+
       - name: No v5-era @cypress/grep usage (regression guard)
         run: |
           # `--env grepTags=` (with =) is the executable form; bare `--env grepTags` in prose

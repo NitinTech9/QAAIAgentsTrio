@@ -1,0 +1,8 @@
+{
+  "key": "SELFTEST-3",
+  "summary": "Selftest: widget tags API coverage (list, attach, detach)",
+  "issuetype": "Story",
+  "status": "In Progress",
+  "description": "Add coverage for widget tags: GET /api/widgets/{id}/tags lists tags, POST /api/widgets/{id}/tags attaches one (persisted to widget_tags), DELETE /api/widgets/{id}/tags/{tagId} detaches it (row removed). All three require a session; mutations require the CSRF header. Bundled fake ticket used by /qa-selftest golden — endpoints are fictional.",
+  "comments": []
+}
