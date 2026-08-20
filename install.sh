@@ -44,7 +44,7 @@ PAYLOAD_DIRS="$PAYLOAD_DIRS scripts/gates"
 # Single files copied only when absent (user-owned after first install).
 PAYLOAD_ONCE=".claude/project-config.json"
 # Docs and examples copied wholesale (framework-owned, safe to refresh on upgrade).
-PAYLOAD_DOCS="AI-AUTOMATION-GUIDE.md HOW-TO-ADAPT.md ci/qa-pr-gate.example.yml .claude/project-config.local.example.json .claude/settings.local.example.json"
+PAYLOAD_DOCS="AI-AUTOMATION-GUIDE.md HOW-TO-ADAPT.md SETUP.md ci/qa-pr-gate.example.yml .claude/project-config.local.example.json .claude/settings.local.example.json"
 
 CONFLICTS=""
 NAME_COLLISIONS=""

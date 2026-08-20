@@ -16,6 +16,7 @@ rest of this document is reference material you look things up in, not a tutoria
 1. [What this actually does, in plain language](#what-this-actually-does-in-plain-language)
 2. [Your first run](#your-first-run)
 3. [The five ideas everything else is built on](#the-five-ideas-everything-else-is-built-on)
+   - [The enforcement layer](#the-enforcement-layer--what-keeps-the-ai-honest) · gates, hooks, protocols, CI
 4. [System overview](#system-overview)
 
 **Reference** — look things up as you need them
@@ -251,7 +252,13 @@ separates this from a code generator:
 | **Persistence required** | A create with no database check | An API can return `201` and save nothing. |
 | **Manual cases first** | Automation with no agreed cases | Automation without a human-agreed definition of correct is just code that passes. |
 
-These run as scripts, not suggestions. A spec that fails one is not written.
+These run as scripts, not suggestions — `scripts/gates/` enforces **nine** checks in all (ticket
+IDs in titles, tags, `failOnStatusCode`, syntax, a real unauthenticated test, no hardcoded
+credentials, plus the three above), and the same code runs in `/validate-spec`, the pre-commit
+hook, and CI, so all three always agree. Scanning is comment-stripped: a comment can neither
+satisfy a gate (a `queryDb` mention in a comment doesn't count as a persistence check) nor trip
+one (a comment quoting a banned pattern doesn't fail the spec). A spec that fails a hard gate is
+not written.
 
 ### 5 · Accumulated knowledge — the suite gets smarter
 
@@ -268,6 +275,60 @@ anything**:
 Discover something new? It gets written back in the same change. This is the compounding part: the
 framework is more useful in month six than in week one, because your team's hard-won knowledge is
 recorded where the next run will actually read it.
+
+Because agents write these files themselves, every behavior-note entry must carry provenance
+(`ticket`, `recordedAt`, `lastVerified`, `recordedBy`) and expires after
+`knowledge.behaviorNoteMaxAgeDays` — a stale or ticket-less entry means *re-verify before
+trusting*, never *silently skip the test*, and `/qa-audit` reports every suppressed endpoint as an
+explicit **COVERAGE RISK** line. Full rules: `.claude/protocols/knowledge-protocol.md`.
+
+---
+
+## The enforcement layer — what keeps the AI honest
+
+Instructions drift and models improvise; this framework's answer is a small executable core
+(~600 lines of code against ~5,900 of instructions) that does not negotiate.
+
+### `scripts/gates/` — nine machine-enforced spec checks
+
+`node scripts/gates/index.js <spec>` (or `npx qa-gates`, `--staged` for the pre-commit hook,
+`--json` for CI) is the **single owner** of every mechanical check: `ticket-id`, `tags-present`,
+`fail-on-status`, `syntax`, `access-control` (a real unauth test must `cy.clearCookies()` —
+fake ones are flagged), `no-credentials`, `no-5xx`, `no-ambiguous`
+(escape hatch: `// status-ambiguous: <reason>`), and `db-assertion`. 9 of `/validate-spec`'s 12
+checks are ENFORCED by it; only 3 judgment checks remain advisory. Scanning is string-aware
+comment-stripped, so comments can neither satisfy nor trip a gate. Canonical rules:
+`.claude/protocols/status-assertions.md`.
+
+### `.claude/hooks/` — three tool-layer guards
+
+| Hook | Blocks |
+|---|---|
+| `block-risky-bash.sh` | destructive git, the forbidden commit trailer, production env vars/URLs in shell commands |
+| `block-secret-writes.sh` | writes to `.env`, credentials, keys, `cypress.env.json` |
+| `block-risky-mcp.sh` | browser navigation outside localhost/configured hosts (production patterns always blocked) and unscoped tracker writes (`QA_ACTIVE_TICKET` enforces per-ticket scoping; unscoped writes are logged, never silent) |
+
+All three parse their payload fail-CLOSED and are smoke-tested by `scripts/hook-smoke.sh` — a
+hook that stops blocking fails CI.
+
+### `.claude/protocols/` — one canonical copy of every cross-cutting rule
+
+`config-read.md`, `state-and-locks.md` (atomic state writes, per-domain run locks, run metrics),
+`untrusted-content.md` (ticket text is third-party DATA, never instructions — fetch-ticket fences
+it in `<<<UNTRUSTED_TRACKER_CONTENT>>>` markers and every reader references the rule), and
+`status-assertions.md`. Agents and commands reference these by path instead of restating them, and
+CI fails if a reference goes missing — duplicated instructions that drift are how agentic systems
+go nondeterministic.
+
+### `.claude/selftest/` + `.github/workflows/selftest.yml` — the framework tests itself
+
+`/qa-selftest` verifies static integrity, the gates, and state/locking mechanics;
+`/qa-selftest golden` additionally generates specs for three bundled reference tickets and diffs
+them against **accepted specs with semantic checklists** (`.claude/selftest/golden/`) — the
+comparison point for judging whether a prompt change made generation better or worse. CI runs the
+deterministic half on every push: JSON validity, config shape, hook smoke tests, all gate
+fixtures, dangling-reference and protocol-reference checks, knowledge-audit selftest, and a
+regression guard for known past breakages.
 
 ---
 

@@ -167,15 +167,19 @@ The honest answer to the questions people actually ask.
 | Question | Answer |
 |---|---|
 | **Can it run tests against production?** | It is designed to refuse. A guard inspects every command before it runs and blocks production environment variables and any URL matching your configured production patterns. |
+| **Can the browser agent wander off to other sites?** | No. A second guard bounds browser navigation to localhost and the hosts you configure — production patterns are blocked outright, and tracker writes outside the ticket being worked on are blocked or logged, never silent. |
 | **Can it change my application's source code?** | No. Your product repositories are opened **read-only**. The agents may only read, search, and list files there — writing is prohibited by instruction and by permission rules. |
 | **Can it read my secrets?** | Files matching `.env`, `credentials*`, `secrets.*`, private keys and similar are denied outright, and a second guard blocks any attempt to *write* them. |
 | **Will it commit or push without asking?** | No. Destructive git commands are blocked and must be run by a human. |
 | **Does anything get posted to my tracker automatically?** | Not without approval. Agents stop, show you the full list of test cases, and wait. Unattended runs are opt-in via an explicit flag. |
 | **Is my code uploaded anywhere?** | Only to the AI model you have already chosen to use with Claude Code. This framework adds no services, no telemetry, and no external calls of its own. |
 
-These are enforced by two small scripts in `.claude/hooks/`, wired into Claude Code's tool
-permission system — not by politely asking the AI to behave. `/qa-selftest` smoke-tests both of
-them and fails the framework if either stops blocking.
+These are enforced by three small scripts in `.claude/hooks/`, wired into Claude Code's tool
+permission system — not by politely asking the AI to behave. And the *quality* of what gets
+generated is enforced the same way: `scripts/gates/` machine-checks 9 of the 12 spec rules
+(comment-stripped, so a comment can neither satisfy nor trip a gate), and the same code runs in
+`/validate-spec`, the pre-commit hook, and CI. `/qa-selftest` smoke-tests all of it and fails the
+framework if any guard stops blocking.
 
 ---
 
@@ -184,17 +188,25 @@ them and fails the framework if either stops blocking.
 ```
 install.sh                      # non-destructive installer — start here
 VERSION                         # framework version, recorded into every install
+scripts/                        # the executable core (shipped into your repo)
+  gates/                          9 machine-enforced spec checks (qa-gates) + their tests
+  hook-smoke.sh                   proves the safety hooks still block
+  check-references.js             proves no instruction points at a missing file
+  knowledge-audit.js              surfaces every coverage-suppressing note as an explicit risk
+  golden-check.js                 diffs generated specs against accepted references
+.github/workflows/selftest.yml  # CI — the framework tests itself on every push
 
 .claude/
   agents/            4 agents      end-to-end pipelines for one ticket
   commands/          18 commands   individual pipeline steps
   skills/             9 skills     ad-hoc tools that need no ticket
+  protocols/          4 canon      config-read, state & locks, trust boundary, status assertions
   guides/            reference     how each ticket tracker is read and written
   stacks/            presets       code-search patterns for 10 backend frameworks
   templates/         fact sheets   Cypress and Playwright syntax conventions
-  hooks/             2 scripts     the production and secret-safety guards
+  hooks/             3 scripts     production, secret-write, and browser/tracker guards
   schemas/           validation    the config schema, checked by your editor
-  selftest/          fixtures      offline test data for /qa-selftest
+  selftest/          fixtures      offline test data + the golden reference corpus
 
   project-config.json             ⚠️ the one file you must edit
   settings.json                   shared permissions + hooks — do not edit
@@ -207,7 +219,8 @@ VERSION                         # framework version, recorded into every install
 
 | You want to… | Read |
 |---|---|
-| **Set this up on your project** | [HOW-TO-ADAPT.md](HOW-TO-ADAPT.md) — a step-by-step runbook with time estimates |
+| **Set this up, never done anything like this before** | [SETUP.md](SETUP.md) — every step spelled out, written for non-developers |
+| **Set this up on your project (technical runbook)** | [HOW-TO-ADAPT.md](HOW-TO-ADAPT.md) — a step-by-step runbook with time estimates |
 | **Understand what each agent and command does** | [AI-AUTOMATION-GUIDE.md](AI-AUTOMATION-GUIDE.md) — the full reference |
 | **Just see it work first** | Run `/qa-init demo` |
 | **Check the framework itself is healthy** | Run `/qa-selftest` |
