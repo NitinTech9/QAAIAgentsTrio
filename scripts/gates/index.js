@@ -9,24 +9,29 @@ const path = require("path");
 const { execSync } = require("child_process");
 
 const GATES = [
-    require("./syntax"),        // Check 8
-    require("./ticket-id"),     // Check 1
-    require("./tags-present"),  // Check 4
-    require("./fail-on-status"),// Check 6
-    require("./no-5xx"),        // Check 9  (HARD GATE)
-    require("./no-ambiguous"),  // Check 9b
-    require("./db-assertion"),  // Check 11 (HARD GATE)
+    require("./syntax"),         // Check 8
+    require("./ticket-id"),      // Check 1
+    require("./tags-present"),   // Check 4
+    require("./fail-on-status"), // Check 6
+    require("./access-control"), // Check 5
+    require("./no-secrets"),     // Check 7 (gate id: no-credentials)
+    require("./no-5xx"),         // Check 9  (HARD GATE)
+    require("./no-ambiguous"),   // Check 9b
+    require("./db-assertion"),   // Check 11 (HARD GATE)
 ];
 
-function loadDbVerification(cwd) {
-    let v = true;
+function loadProjectConfig(cwd) {
+    const out = { dbVerification: true, paths: {} };
     for (const f of ["project-config.json", "project-config.local.json"]) {
         try {
             const c = JSON.parse(fs.readFileSync(path.join(cwd, ".claude", f), "utf8"));
-            if (c.project && typeof c.project.dbVerification === "boolean") v = c.project.dbVerification;
-        } catch (e) { /* absent/invalid config -> default true */ }
+            const p = c.project || {};
+            if (typeof p.dbVerification === "boolean") out.dbVerification = p.dbVerification;
+            if (p.paths) out.paths = Object.assign({}, out.paths, { apiTests: p.paths.apiTests, uiTests: p.paths.uiTests });
+            if (p.app && p.app.loginPath) out.paths.loginPath = p.app.loginPath;
+        } catch (e) { /* absent/invalid config -> defaults */ }
     }
-    return v;
+    return out;
 }
 
 function stagedSpecs() {
@@ -47,11 +52,11 @@ function main(argv) {
 
     const notes = [];
     const violations = [];
-    const dbVerification = loadDbVerification(process.cwd());
+    const cfg = loadProjectConfig(process.cwd());
     for (const file of files) {
         if (!fs.existsSync(file)) { violations.push({ file, gate: "io", line: 0, message: "file not found" }); continue; }
         const src = fs.readFileSync(file, "utf8");
-        const ctx = { file, dbVerification, notes };
+        const ctx = { file, dbVerification: cfg.dbVerification, paths: cfg.paths, notes };
         for (const g of GATES)
             for (const v of g.check(src, ctx))
                 violations.push({ file, gate: g.name, line: v.line, message: v.message });
@@ -68,4 +73,4 @@ function main(argv) {
 }
 
 if (require.main === module) process.exit(main(process.argv.slice(2)));
-module.exports = { main, GATES, loadDbVerification };
+module.exports = { main, GATES, loadProjectConfig };

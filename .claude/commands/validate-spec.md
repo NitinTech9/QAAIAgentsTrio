@@ -31,12 +31,12 @@ Scan for unresolved placeholders (`[NN]`, `[endpoint]`, `[Feature Name]`, `<reso
 `beforeEach` with auth setup; `afterEach` with `cy.clearCookies()` (auto-add if absent); any `before()` SQL cross-checked against `{config.paths.tasks}/`.
 ### Check 4: Tags on Every it()
 ENFORCED via qa-gates (`tags-present`). Auto-fix by adding `{ tags: ["@Regression"] }` as a safe default, then re-run.
-### Check 5: Unauthenticated / Access-Control Test Present — ADVISED (needs judgment)
-API: at least one `it()` asserts 401/403 with no auth — truly unauthenticated means `cy.clearCookies()` first, or the session cookie jar still sends the cookie. UI: asserts redirect to login. Append the standard test if missing.
+### Check 5: Unauthenticated / Access-Control Test Present
+ENFORCED via qa-gates (`access-control`). API: an `it()` must assert 401/403 AND call `cy.clearCookies()` in that same test (the cookie jar otherwise still sends the session cookie — a fake unauth test is flagged). UI: a test must assert redirect to the login path. Auto-fix by appending the standard test, then re-run.
 ### Check 6: failOnStatusCode: false on cy.api() (API only)
 ENFORCED via qa-gates (`fail-on-status`). Auto-fix by adding it, then re-run.
-### Check 7: No Hardcoded Credentials — ADVISED (needs judgment)
-Flag any credential/token/connection string — must move to `Cypress.env()` or fixtures.
+### Check 7: No Hardcoded Credentials
+ENFORCED via qa-gates (`no-credentials`). Literal passwords/secrets/tokens/api-keys, Bearer literals, credentialed connection URIs, and long hex/base64 literals are flagged; `Cypress.env()`/`process.env` reads are the correct pattern and never flag. Move findings to `Cypress.env()` or fixtures, then re-run.
 ### Check 8: Syntax
 ENFORCED via qa-gates (`syntax`, a `node --check` wrapper).
 ### Check 9: No 5xx Accepted in Status Assertions — **HARD GATE**
@@ -50,6 +50,6 @@ ENFORCED via qa-gates (`db-assertion`). A mutation asserted 2xx-successful needs
 
 ## Report & Update State
 
-Print a table — one row per check: ✅/⚠️/❌, action taken, and its class: **ENFORCED** (1, 4, 6, 8, 9, 9b, 11 — verdicts come from qa-gates, identical to the pre-commit hook's) or **ADVISED** (2, 3, 5, 7, 10 — reviewed by you, judgment applies). Anyone reading the report must be able to tell which class each finding belongs to.
+Print a table — one row per check: ✅/⚠️/❌, action taken, and its class: **ENFORCED** (1, 4, 5, 6, 7, 8, 9, 9b, 11 — verdicts come from qa-gates, identical to the pre-commit hook's) or **ADVISED** (2, 3, 10 — reviewed by you, judgment applies). Anyone reading the report must be able to tell which class each finding belongs to.
 
 **Checks 9, 9b, and 11 are hard gates:** a single hit ⇒ overall `NEEDS REVIEW ⚠️`, do NOT set pipeline state, and ask the user to resolve. Otherwise, once qa-gates exits 0 and no ADVISED item is unresolved: merge `steps[STATE_KEY] = "done"` + fresh `lastUpdated` into the pipeline state, preserving all other keys.
