@@ -90,9 +90,9 @@
     },
     "runCommand": {
       "_comment": "{specFile} and {env} are replaced at runtime by run-tests.md. Add any environment prefix your machine needs (e.g. a Node version manager) to all three commands.",
-      "headed": "npx cypress run --spec \"{specFile}\" --headed --reporter mochawesome",
-      "headless": "npx cypress run --spec \"{specFile}\" --reporter mochawesome",
-      "withEnv": "CYPRESS_ENV={env} npx cypress run --spec \"{specFile}\" --reporter mochawesome"
+      "headed": "npx cypress run --spec \"{specFile}\" --headed",
+      "headless": "npx cypress run --spec \"{specFile}\"",
+      "withEnv": "CYPRESS_ENV={env} npx cypress run --spec \"{specFile}\""
     },
     "runTimeoutMs": 600000,
     "productCode": {

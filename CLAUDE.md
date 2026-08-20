@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-> **Template note:** this is an example CLAUDE.md for a QA repo using this framework. Replace every `<placeholder>` and the example values with your project's real ones, and delete sections that don't apply.
+> **Template note:** this is an example CLAUDE.md for a QA repo using this framework. This repo intentionally contains **no test suite** — only the framework under `.claude/` and its docs; the Cypress suite described below is what your repo will look like *after* you run `/qa-init` (or copy the framework into an existing suite). Replace every `<placeholder>` and the example values with your project's real ones, and delete sections that don't apply.
 
 ## What this is
 

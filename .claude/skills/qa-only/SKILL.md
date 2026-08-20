@@ -9,6 +9,8 @@ You perform a complete quality audit of the regression suite. You run tests, ana
 
 **You never write, edit, or fix test files. You never touch application code. Report only.**
 
+**Framework check first:** read `.claude/project-config.json` (`testFramework`, `paths.*`, `app.primaryBaseUrl`, `runCommand`, `dbVerification`) and the matching `.claude/templates/{testFramework}-javascript.md`. The commands below show the Cypress defaults — always substitute the configured values, and translate for Playwright per the template.
+
 ---
 
 ## VOICE & TONE
@@ -21,20 +23,20 @@ Sound like a sharp QA lead reviewing a sprint. Be direct and specific — name t
 
 | Item | Value |
 |---|---|
-| Framework | Cypress 15.x |
-| Base URL | `http://localhost:4000` (local), `CYPRESS_ENV=staging/uat` |
+| Framework | `config.testFramework` (examples below: Cypress) |
+| Base URL | `config.app.primaryBaseUrl` — env selected via the `CYPRESS_ENV` **process env var** |
 | Config | `cypress.config.js` |
-| Test root | `cypress/e2e/API/` and `cypress/e2e/UI/` |
-| Reports | `cypress/reports/` (Mochawesome JSON + HTML) |
-| Primary Swagger | `cypress/fixtures/swagger.json` |
-| Secondary Swagger (if any) | `cypress/fixtures/secondary-swagger.json` |
+| Test root | `config.paths.apiTests` and `config.paths.uiTests` |
+| Reports | `config.paths.reports` (Mochawesome JSON + HTML) |
+| Primary Swagger | `config.paths.swaggerPrimary` |
+| Secondary Swagger (if any) | `config.paths.swaggerSecondary` |
 | Issue taxonomy | `.claude/skills/qa/references/issue-taxonomy.md` |
 | Report template | `.claude/skills/qa/templates/qa-report-template.md` |
 | Tags | `@PR` (smoke), `@Smoke`, `@Regression` |
 | Primary DB | PostgreSQL via `cy.task("queryDb", sql)` |
 | Secondary DB (if any) | PostgreSQL via `cy.task("querySecondaryDb", sql)` |
-| Primary Auth | `cy.loginAndGetSessionCookie()` → `@sessionCookie` + `@csrfToken` |
-| Secondary Auth (if any) | `cy.loginToSecondaryApp()` → `@secondarySessionCookie` |
+| Primary Auth | `config.auth.primary.loginCommand` → its cookie/CSRF aliases |
+| Secondary Auth (if any) | `config.auth.secondary.loginCommand` → its `sessionCookieAlias` |
 
 ---
 
@@ -45,9 +47,9 @@ Sound like a sharp QA lead reviewing a sprint. Be direct and specific — name t
 Start a timer. Confirm what the user wants scoped:
 - All tests? A specific module? A specific tag? A failing test?
 
-Check that the app is reachable:
+Check that the app is reachable (URL from `config.app.primaryBaseUrl` — any HTTP status counts as "up"; only a connection failure means down):
 ```bash
-curl -s -o /dev/null -w "%{http_code}" http://localhost:4000/api/health
+curl -s -o /dev/null -w "%{http_code}" "$PRIMARY_BASE_URL"
 ```
 
 Identify the most recent Mochawesome report if one exists — use the Glob tool:
@@ -71,47 +73,48 @@ For each file, note:
 
 ### Phase 3 — Run Tests (or Parse Existing Report)
 
-**If user says "run and report"** — run with tag filter:
+**If user says "run and report"** — run with tag filter. Tag filtering uses @cypress/grep's `grepTags` (NOT `CYPRESS_TAGS`), the environment is selected via the `CYPRESS_ENV` **process env var** (the `--env` flag does not reach `cypress.config.js`), and the reporter comes from the config file — don't override it inline:
 ```bash
 # Smoke only (fast)
-npx cypress run --env CYPRESS_ENV=local,CYPRESS_TAGS="@PR" --reporter cypress-mochawesome-reporter 2>&1 | tail -40
+CYPRESS_ENV=local npx cypress run --env grepTags=@PR 2>&1 | tail -40
 
 # Full regression
-npx cypress run --env CYPRESS_ENV=local,CYPRESS_TAGS="@Regression" --reporter cypress-mochawesome-reporter 2>&1 | tail -40
+CYPRESS_ENV=local npx cypress run --env grepTags=@Regression 2>&1 | tail -40
 
 # Specific module
-npx cypress run --spec "cypress/e2e/API/[module]/**/*.cy.js" --env CYPRESS_ENV=local 2>&1 | tail -40
+CYPRESS_ENV=local npx cypress run --spec "cypress/e2e/API/[module]/**/*.cy.js" 2>&1 | tail -40
 ```
 
-**If a report already exists** — parse it:
+**If a report already exists** — parse it (newest by mtime, node — no python dependency):
 ```bash
-REPORT=$(find cypress/reports -name "*.json" | sort | tail -1)
-cat "$REPORT" | python3 -c "
-import sys, json
-d = json.load(sys.stdin)
-s = d['stats']
-print(f'Total: {s[\"tests\"]} | Passed: {s[\"passes\"]} | Failed: {s[\"failures\"]} | Pending: {s[\"pending\"]} | Duration: {s[\"duration\"]//1000}s')
-"
+REPORT=$(ls -t $(find cypress/reports -name "*.json") 2>/dev/null | head -1)
+node -e '
+const path=require("path");
+const d=require(path.resolve(process.argv[1]));
+const s=d.stats;
+console.log(`Total: ${s.tests} | Passed: ${s.passes} | Failed: ${s.failures} | Pending: ${s.pending} | Duration: ${Math.round(s.duration/1000)}s`);
+' "$REPORT"
 ```
 
-For each failed test, extract:
+For each failed test, extract — tests nest inside `suites` (recursively), so walk the tree; never read only `results[].tests`:
 ```bash
-cat "$REPORT" | python3 -c "
-import sys, json
-d = json.load(sys.stdin)
-for suite in d.get('results', []):
-    for test in suite.get('tests', []):
-        if test.get('state') == 'failed':
-            print(f'FAIL: {test[\"fullTitle\"]}')
-            print(f'  Error: {test.get(\"err\", {}).get(\"message\", \"unknown\")}')
-"
+node -e '
+const path=require("path");
+const d=require(path.resolve(process.argv[1]));
+(function walk(s){
+  (s.tests||[]).forEach(t=>{ if(t.state==="failed"||t.fail){
+    console.log("FAIL: "+t.fullTitle);
+    console.log("  Error: "+((t.err||{}).message||"unknown")); }});
+  (s.suites||[]).forEach(walk);
+})({suites:d.results||[]});
+' "$REPORT"
 ```
 
 ### Phase 4 — Coverage Gap Analysis
 
 Compare covered endpoints against swagger:
 
-Read `cypress/fixtures/swagger.json` and count all endpoints (sum of methods per path).
+Read the swagger at `config.paths.swaggerPrimary` and count all endpoints (sum of methods per path). If the path is null or the file is missing, skip the Coverage dimension and redistribute its weight (see Phase 5).
 
 Use the Grep tool to count tested endpoints:
 ```
@@ -121,7 +124,7 @@ glob: "*.cy.js"
 output_mode: "count"
 ```
 
-Manually compare by module. For each module folder that exists in swagger but has NO corresponding folder in `cypress/e2e/API/`, flag as **❌ Not Started**. For modules with a folder but fewer than 3 test cases, flag as **⚠️ Partial**.
+Manually compare by module. For each module folder that exists in swagger but has NO corresponding folder in `config.paths.apiTests`, flag as **❌ Not Started**. For modules with a folder but fewer than 3 test cases, flag as **⚠️ Partial**. (The `url:` count is an estimate — endpoints exercised through helpers or `cy.request` may be under-counted; label it as an estimate in the report.)
 
 ### Phase 5 — Score Health
 
@@ -143,12 +146,16 @@ Compute the **QA Health Score** (0–100) across 6 dimensions:
 - 40–59: High risk — significant gaps
 - 0–39: Critical — not safe to rely on
 
+If `project.dbVerification` is `false`, drop the DB Verification dimension and redistribute its 10% weight proportionally across the rest; do the same for Coverage when no swagger is configured.
+
 ### Phase 6 — Produce Report
 
 Write the report to:
 ```
-cypress/reports/qa-audit-{YYYY-MM-DD}.md
+{config.paths.reports}/qa-report-{YYYY-MM-DD}.md
 ```
+
+Start from the canonical template — copy `.claude/skills/qa/templates/qa-report-template.md` and fill it in, skipping the `/qa`-only sections (Fixes Applied etc.). The REPORT FORMAT sketch below is a condensed reminder, not a substitute for the template.
 
 ---
 
@@ -247,7 +254,7 @@ To add regression cases: `/add-test-cases`
 
 ## CRITICAL RULES
 
-1. **Never edit, create, or delete any file** except the report output in `cypress/reports/`
+1. **Never edit, create, or delete any file** except the report output in `config.paths.reports`
 2. **Never suggest inline code fixes** — name the file and the issue, nothing more
 3. Verify every failure before reporting it — do not report guesses
 4. If a test is failing due to the app being down (ECONNREFUSED), note it and stop — all failures are environment noise, not test bugs

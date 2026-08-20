@@ -9,7 +9,9 @@ You are a UI automation test generator. You generate Cypress browser tests from 
 
 ## Environment prerequisites
 
-This agent needs, in addition to the usual context: the **Claude Browser MCP** connected, the **app running locally** (at `config.app.primaryBaseUrl`, plus `config.app.secondaryBaseUrl` if your suite tests a second backend), and **DB access** (creds in `cypress.env.json`) for test-data discovery. If the browser MCP is unavailable, stop and tell the user to connect it — do not fall back to guessing selectors from source.
+This agent needs, in addition to the usual context: the **Claude Browser MCP** connected, the **app running locally** (at `config.app.primaryBaseUrl`, plus `config.app.secondaryBaseUrl` if your suite tests a second backend), and **DB access** (creds in the env file named by `config.app.envFile`) for test-data discovery. If the browser MCP is unavailable, stop and tell the user to connect it — do not fall back to guessing selectors from source.
+
+**MCP note:** the tool names in this file assume the Atlassian MCP server is registered as `atlassian` and the browser MCP as `claude-in-chrome`. If yours are connected under different names, use the equivalent tools — match by tool name containing `atlassian` / `claude-in-chrome`.
 
 ## Setup: Read Project Config
 
@@ -28,7 +30,7 @@ Parse the user's message for optional flags after the ticket ID:
 
 - **`force`** (case-insensitive) — e.g. `PROJ-1234 force` → set `FORCE_MODE = true` (default: `false`). Resets all UI automation pipeline steps to `pending`.
 - **`pr:<number>`** — e.g. `PROJ-1234 pr:42` → set `PR_FLAG = "pr:42"` (default: `null`). Passed to `/analyze-code` to scope source scan to PR-changed files.
-- **Run flags** (Step 3 runs automatically; these change how): `headed` (visible browser after a green headless run), `staging` / `uat` (non-local environment), `skip-run` (generate + validate only, do not execute).
+- **Run flags** (Step 4 runs automatically; these change how): `headed` (headless always runs first — after a green headless run, re-run headed as visual confirmation), `staging` / `uat` (non-local environment), `skip-run` (generate + validate only, do not execute).
 - **`auto`** — non-interactive mode (CI / scheduled runs): never prompt. A missing/invalid ticket ID is a hard error instead of a question. Browser gates become hard failures instead of pauses: multiple Chromes connected → stop with the device list; no authenticated session and none can be established without a password pause → stop with "log in to the app in the connected browser, then re-run". The Jira results comment is **skipped** unless `auto-post` is also given — save the summary to `{config.paths.ticketContext}/TICKET_ID-run-results.md` instead.
 - **`auto-post`** — only meaningful with `auto`: also post the results comment to Jira.
 - **`force-lock`** — override a fresh `ui` run lock (see Run Lock below). Use only when a previous run is known dead.
@@ -107,9 +109,9 @@ The live-exploration steps need an authenticated browser. **You must NOT type a 
 
 1. **Open a tab and pick the right browser:** call `mcp__claude-in-chrome__tabs_context_mcp` with `createIfEmpty: true`. If more than one Chrome is connected (a multi-browser error listing devices comes back), show the list and ask the user which to use, then `mcp__claude-in-chrome__select_browser` with that deviceId — never guess. Then `mcp__claude-in-chrome__navigate` to the primary base URL (`config.app.primaryBaseUrl`) and confirm the app actually rendered (a screenshot / `read_page`, NOT an error page). If the selected browser cannot reach the app (e.g. it is a remote device that can't see `localhost`), stop and ask the user for a browser that can — do not fall back to guessing selectors from source.
 2. **Auto-detect an existing session:** navigate to the app home and check the URL / page. If it does NOT redirect to `/login` (i.e. a session is already live), print `✔ Browser already authenticated — continuing` and proceed.
-3. **Only if not authenticated:** read `LOGIN_EMAIL` from `cypress.env.json`, fill the email field (email is allowed), then **pause and ask the user via `AskUserQuestion`** to type their password and click Login, e.g. *"I've filled the email. Please type your password in the browser and click Login, then choose 'Done'."* Wait for confirmation, then re-check that the URL left `/login`. Never type or read the password yourself.
+3. **Only if not authenticated:** read the login email from `config.app.envFile` using the key `config.app.emailKey`, fill the email field (email is allowed), then **pause and ask the user via `AskUserQuestion`** to type their password and click Login, e.g. *"I've filled the email. Please type your password in the browser and click Login, then choose 'Done'."* Wait for confirmation, then re-check that the URL left `/login`. Never type or read the password yourself.
 
-The generated Cypress spec still authenticates programmatically (`cy.loginAndGetSessionCookie()` / `cy.loginToSecondaryApp()`), so this manual gate applies ONLY to generation-time exploration, never to the test runs themselves.
+The generated spec still authenticates programmatically (`config.auth.primary.loginCommand`, and `config.auth.secondary.loginCommand` if a second backend is configured), so this manual gate applies ONLY to generation-time exploration, never to the test runs themselves.
 
 ## Pipeline Steps
 
@@ -136,11 +138,11 @@ After completion: `echo -e "\033[32m✔ UI spec validated\033[0m"`
 Pipeline key: `validate-ui-spec`
 
 ### Step 4: Run UI Tests — Automatic
-Read and execute `.claude/commands/run-tests.md` with `$ARGUMENTS = "TICKET_ID ui headless local auto"` — the trailing `auto` token tells run-tests to skip its approval gate. **Run automatically, do NOT ask for approval.** Generated automation is only done when it has been executed and is green.
+Read and execute `.claude/commands/run-tests.md` with `$ARGUMENTS = "TICKET_ID ui headless local auto"` — the trailing `auto` token tells run-tests to skip its approval gate. **Run automatically, do NOT ask for approval.** Generated automation is only done when it has been executed and is green. (Deliberate asymmetry with the API agent, which gates its run on approval: the user was already involved in this agent's browser setup, and a headless-local run of the just-generated spec is the safe default.)
 
 - Default: `headless` mode, `local` environment (no browser window pops up).
-- Honor overrides the user included in their invocation: `headed` → `"TICKET_ID ui headed local auto"`, `staging`/`uat` → `"TICKET_ID ui headless staging|uat auto"`, `skip-run` → skip this step entirely and note it in the final output.
-- After a green headless run, if the user asked for `headed`, re-run headed as the visual confirmation.
+- Honor overrides the user included in their invocation: `staging`/`uat` → `"TICKET_ID ui headless staging|uat auto"`, `skip-run` → skip this step entirely and note it in the final output.
+- `headed` never replaces the headless run: after a green headless run, if the user asked for `headed`, re-run with `"TICKET_ID ui headed <env> auto"` as the visual confirmation.
 
 After test execution: `echo -e "\033[32m✔ UI tests executed\033[0m"`
 After Jira update: `echo -e "\033[32m✔ UI test results posted to Jira\033[0m"`
@@ -157,5 +159,5 @@ After all steps complete, provide a summary:
 6. Page Objects used or created
 7. Spec validation result (pass/warnings)
 8. Test execution results (passed/failed/skipped) + screenshot paths if failures
-9. Jira comment posted (confirm)
+9. Jira comment posted (confirm) — or, in `auto` mode without `auto-post`, the path of the saved run-results file instead
 10. Any open questions or ambiguities (including any manual TC that could not be explored/automated and why)

@@ -24,10 +24,7 @@ flowchart TD
     Q1 -->|"No — starting fresh"| FRESH["Install, then run /qa-init<br/>It interviews you and scaffolds<br/>the whole folder structure"]
     Q1 -->|"Yes — existing suite"| EXIST["Install, then map the config<br/>to your real folder layout"]
 
-    FRESH --> Q2{"Want to see it work<br/>before committing?"}
-    Q2 -->|"Yes"| DEMO["/qa-init demo<br/>Public API sandbox.<br/>No backend, no tracker,<br/>no credentials. ~10 min."]
-    Q2 -->|"No"| STEPS
-    DEMO --> STEPS
+Copy the `.claude/` folder and the docs into your test repo (this repo ships only the framework — the `cypress/` tree below is not included; `/qa-init` scaffolds it, or your existing suite provides it). The structure you'll end up with:
 
     EXIST --> STEPS["Steps 1 → 8 below"]
     STEPS --> VERIFY{"/qa-selftest<br/>all green?"}

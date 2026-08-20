@@ -13,6 +13,8 @@ You are an API automation test generator. You generate Cypress API specs from ma
 
 Never hardcode paths, Jira config, or auth details.
 
+**MCP note:** the Jira tool names in this file assume the Atlassian MCP server is registered as `atlassian`. If it is connected under a different name (e.g. the claude.ai connector), use the equivalent tools — match by tool name containing `atlassian`.
+
 ## Ticket ID Gate
 
 **If the user's message does not contain a ticket ID matching `^#?[A-Za-z0-9][A-Za-z0-9._-]*$`, ask:**
@@ -26,6 +28,7 @@ Parse the user's message for optional flags after the ticket ID:
 
 - **`force`** (case-insensitive) — e.g. `PROJ-1234 force` → set `FORCE_MODE = true` (default: `false`). Resets all pipeline steps for this agent to `pending`.
 - **`pr:<number>`** — e.g. `PROJ-1234 pr:42` → set `PR_FLAG = "pr:42"` (default: `null`). Passed to `/analyze-code` to scope source scan to PR-changed files.
+- **Run flags** — `headed`, `staging` / `uat`: change how Step 4 runs the tests once approved (or with defaults in `auto`). Record them when parsing; Step 4 honors them.
 - **`auto`** — non-interactive mode (CI / scheduled runs): never prompt. A missing/invalid ticket ID is a hard error instead of a question. Step 4's approval gate is skipped and tests run with defaults (headless, local). The Jira results comment is **skipped** unless `auto-post` is also given — save the results summary to `{config.paths.ticketContext}/TICKET_ID-run-results.md` instead.
 - **`auto-post`** — only meaningful with `auto`: also post the results comment to Jira.
 - **`force-lock`** — override a fresh `api` run lock (see Run Lock below). Use only when a previous run is known dead.
@@ -48,6 +51,14 @@ Check `{config.paths.manualCases}/TICKET_ID.md`:
   > Then re-run `@api-automation-test-generator TICKET_ID`."
 
   Do not proceed. Do not attempt to auto-generate manual cases.
+
+## API Test Cases Presence Check
+
+Read `{config.paths.manualCases}/TICKET_ID.md` and count test cases tagged `**Type:** API` or `**Type:** Mixed`.
+
+- **If zero API/Mixed cases exist**, stop and tell the user:
+  > "No API test cases were found in TICKET_ID.md (no `**Type:** API` or `**Type:** Mixed` entries). This ticket may be UI-only. Run `@ui-automation-test-generator TICKET_ID` instead, or ask your team to add API test cases to the manual file first."
+- Otherwise, continue.
 
 ## Canonical Pipeline State
 
@@ -88,7 +99,7 @@ If either is missing, fill it before Step 1:
 - Missing `TICKET_ID.json`: Read and execute `.claude/commands/fetch-ticket.md` with `TICKET_ID`.
 - Missing `TICKET_ID-analysis.md`: Read and execute `.claude/commands/analyze-code.md` with `TICKET_ID`.
 
-Do these **sequentially** (fetch before analyze).
+Do these **sequentially** (fetch before analyze), and after each one mark its step (`fetch-ticket` / `analyze-code`) as `"done"` in the pipeline state so it is not re-run later.
 
 ## How You Work
 
@@ -113,8 +124,9 @@ Pipeline key: `create-api-automated-test-cases`
 
 Read and execute `.claude/commands/create-schema-validation.md` with `$ARGUMENTS = TICKET_ID`. It adds,
 for every endpoint the Step 1 spec automates that returns a 200 JSON body, a schema fixture
-(`cypress/fixtures/schemas/<name>.schema.json`) + a per-endpoint schema spec
-(`cypress/e2e/API/schema-validation/<primary|secondary>/NN-<name>-schema.cy.js`), reusing existing fixtures and
+(`{config.paths.fixtures}/schemas/<name>.schema.json`) + a per-endpoint schema spec
+(`{config.paths.apiTests}/schema-validation/<primary|secondary>/NN-<name>-schema.<ext>` — spec extension and
+syntax per `.claude/templates/{testFramework}-javascript.md`), reusing existing fixtures and
 skipping non-JSON (PDF/CSV/307) responses. Each schema spec must pass before moving on.
 
 After completion: `echo -e "\033[32m✔ Schema validation tests generated\033[0m"`
@@ -160,5 +172,5 @@ After all steps complete, provide a summary:
 5. Schema fixtures + schema-validation specs created (count; note any endpoints skipped as non-JSON)
 6. Spec validation result (pass/warnings)
 7. Test execution results (passed/failed/skipped)
-8. Jira comment posted (confirm)
+8. Jira comment posted (confirm) — or, in `auto` mode without `auto-post`, the path of the saved run-results file instead
 9. Any open questions or ambiguities
