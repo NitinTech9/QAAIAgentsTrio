@@ -59,3 +59,7 @@ independent — API and UI automation for the same ticket MAY run in parallel; t
 
 Agent-local deviations (e.g. the manual agent's FORCE_MODE guard) are stated in that agent's file
 and must say explicitly what they override.
+
+## Run metrics (recorded by every agent at Final Output)
+
+Record `RUN_STARTED_AT` (ISO timestamp) at agent setup. For tuning `maxTurns` budgets from data instead of guessing: append one entry to `{config.paths.knowledge}/agent-run-history.json` (create `{"runs": []}` if missing; validate JSON after writing): `{"agent": "<this agent>", "ticketId": TICKET_ID, "startedAt": RUN_STARTED_AT, "finishedAt": "<now ISO>", "wallClockMs": <difference>, "stepsCompleted": <count of steps set to done this run>, "turnsUsed": null}`. The harness does not expose the model-turn count to the agent, so `turnsUsed` stays `null` — wall-clock and step count are the honest proxies until the harness provides it.
