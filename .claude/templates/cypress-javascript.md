@@ -18,6 +18,20 @@ Read this file when `project.testFramework = "cypress"`. It defines the syntax, 
 | Failure artifacts | `cypress/screenshots/` |
 | Run single spec | `npx cypress run --spec "<file>"` |
 
+## Tested with (verified by execution — /doctor warns on major drift)
+
+| Package | Version |
+|---|---|
+| cypress | 15.21.0 |
+| @cypress/grep | 6.0.3 |
+| cypress-mochawesome-reporter | 5.0.0 |
+| cypress-plugin-api | 2.12.1 |
+| @faker-js/faker | 10.6.0 |
+| chai-json-schema | 2.0.1 |
+| pg | 8.23.0 |
+
+The instructions in this framework assume these majors (e.g. @cypress/grep v6's `--expose grepTags` / `/plugin` subpath). A different installed major means the instructions may be silently wrong — update the framework and this table together, never just the dependency.
+
 ## API spec skeleton
 
 ```javascript

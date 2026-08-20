@@ -75,7 +75,7 @@ docs/test-cases   docs/.ticket-context
 ```
 
 **Packages** — `npm init -y` if no `package.json`, then immediately fix the metadata `npm init -y` scrapes from the README (`npm pkg set name="<repo-folder-name>" description="<PROJECT_NAME> E2E regression suite (API + UI)"`), then:
-`npm install -D cypress cypress-plugin-api cypress-mochawesome-reporter @cypress/grep @faker-js/faker chai-json-schema` (+ `pg` if DB).
+`npm install -D cypress@15 cypress-plugin-api@2 cypress-mochawesome-reporter@5 @cypress/grep@6 @faker-js/faker@10 chai-json-schema@2` (+ `pg@8` if DB) — majors pinned to the "Tested with" table in `.claude/templates/cypress-javascript.md`; bump them there and here together.
 After installing, run `npm audit` and apply `npm audit fix` for anything auto-fixable; report what remains.
 
 **`package.json` scripts** (merge, don't clobber existing):
@@ -229,7 +229,7 @@ tests/support   tests/fixtures/schemas   tests/knowledge
 docs/test-cases   docs/.ticket-context
 ```
 
-**Packages** — `npm init -y` if needed, then `npm install -D @playwright/test @faker-js/faker dotenv ajv` (+ `pg` if DB), then `npx playwright install chromium`.
+**Packages** — `npm init -y` if needed, then `npm install -D @playwright/test@1 @faker-js/faker@10 dotenv@16 ajv@8` (+ `pg@8` if DB), then `npx playwright install chromium` — majors pinned to the "Tested with" table in `.claude/templates/playwright-javascript.md`.
 
 **`package.json` scripts:** `pw:run` (`playwright test`), `pw:api` (`playwright test --project=api`), `pw:ui` (`playwright test --project=ui`), `pw:pr` (`playwright test --grep @PR`), `pw:smoke` (`--grep @Smoke`), `pw:regression` (`--grep @Regression`), `pw:report` (`playwright show-report`).
 

@@ -30,6 +30,7 @@ This checks, in order:
 4. **Secondary backend** (if your suite tests one) reachable at its base URL.
 5. **Env file** (`config.app.envFile`, e.g. `cypress.env.json`) present with the required login + DB keys (the file is gitignored/local).
 6. **Databases** — `SELECT 1` against each Postgres DB the suite uses (inline `node -e` with `pg`).
+7. **Dependency drift** — for each package in the "Tested with" table of `.claude/templates/{testFramework}-javascript.md`, read the installed version (`node -e "console.log(require('<pkg>/package.json').version)"`) and **warn** when the installed major differs from the table's — the framework's instructions assume those majors (a drifted @cypress/grep, for example, silently changes how tag filtering works). Not installed yet = skip with a note.
 
 **Playwright projects** (`testFramework: "playwright"`): checks 1, 3, 4, and 6 apply unchanged; skip check 2 (`ELECTRON_RUN_AS_NODE` is Cypress-specific) and for check 5 use the env file named by `config.app.envFile`. Also verify `playwright.config.js` exists and browsers are installed (`npx playwright --version`).
 

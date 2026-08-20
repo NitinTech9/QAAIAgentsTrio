@@ -18,6 +18,18 @@ Read this file when `project.testFramework = "playwright"`. It defines the synta
 | Failure artifacts | `test-results/` (screenshots, traces) |
 | Run single spec | `npx playwright test <file>` |
 
+## Tested with (majors the scaffold assumes — NOT execution-verified; Playwright support is experimental)
+
+| Package | Major |
+|---|---|
+| @playwright/test | 1 |
+| @faker-js/faker | 10 |
+| dotenv | 16 |
+| ajv | 8 |
+| pg | 8 |
+
+/doctor warns when an installed major drifts from this table. Update the framework and this table together, never just the dependency.
+
 ## API spec skeleton
 
 ```javascript
