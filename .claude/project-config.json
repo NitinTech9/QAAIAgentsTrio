@@ -79,6 +79,8 @@
       "primaryBaseUrl": "http://localhost:4000",
       "secondaryBaseUrl": null,
       "loginPath": "/login",
+      "allowedHosts": [],
+      "_allowedHostsComment": "Extra hosts (staging/uat) the browser MCP may reach besides localhost and the baseUrl hosts — enforced by .claude/hooks/block-risky-mcp.sh.",
       "envFile": "cypress.env.json",
       "emailKey": "LOGIN_EMAIL",
       "passwordKey": "LOGIN_PASSWORD"
@@ -95,6 +97,10 @@
       "withEnv": "CYPRESS_ENV={env} npx cypress run --spec \"{specFile}\""
     },
     "runTimeoutMs": 600000,
+    "productionProtection": {
+      "_comment": "Regex patterns that must never appear in a shell command (block-risky-bash.sh) or a browser navigation URL (block-risky-mcp.sh). Put your production hostnames here.",
+      "prodUrlPatterns": []
+    },
     "productCode": {
       "_comment": "rootPaths MUST be overridden in .claude/project-config.local.json with your local repo paths",
       "rootPaths": [],

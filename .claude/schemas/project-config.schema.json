@@ -132,6 +132,11 @@
             "primaryBaseUrl": { "type": "string", "pattern": "^https?://" },
             "secondaryBaseUrl": { "anyOf": [{ "type": "string", "pattern": "^https?://" }, { "type": "null" }] },
             "loginPath": { "type": ["string", "null"] },
+            "allowedHosts": {
+              "type": "array",
+              "items": { "type": "string" },
+              "description": "Extra hosts (staging/uat) the browser MCP may navigate to, besides localhost and the primary/secondary baseUrl hosts. Enforced by .claude/hooks/block-risky-mcp.sh."
+            },
             "envFile": { "type": "string" },
             "emailKey": { "type": ["string", "null"] },
             "passwordKey": { "type": ["string", "null"] }
@@ -154,6 +159,13 @@
           }
         },
         "runTimeoutMs": { "type": "integer", "minimum": 1000 },
+        "productionProtection": {
+          "type": "object",
+          "description": "Production guardrails enforced at the tool layer: block-risky-bash.sh matches these patterns against shell commands, block-risky-mcp.sh against browser navigation URLs.",
+          "properties": {
+            "prodUrlPatterns": { "type": "array", "items": { "type": "string" }, "description": "Extended regexes; any match blocks the command/navigation." }
+          }
+        },
         "productCode": {
           "type": "object",
           "properties": {

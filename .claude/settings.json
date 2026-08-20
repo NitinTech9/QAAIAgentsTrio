@@ -52,6 +52,16 @@
             "timeout": 5
           }
         ]
+      },
+      {
+        "matcher": "mcp__claude-in-chrome__navigate|mcp__claude-in-chrome__tabs_create_mcp|mcp__atlassian__addCommentToJiraIssue|mcp__atlassian__createJiraIssue|mcp__atlassian__createIssueLink|mcp__atlassian__editJiraIssue|mcp__atlassian__transitionJiraIssue",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/block-risky-mcp.sh",
+            "timeout": 5
+          }
+        ]
       }
     ]
   }
