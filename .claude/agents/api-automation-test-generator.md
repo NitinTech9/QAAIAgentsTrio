@@ -13,6 +13,8 @@ You are an API automation test generator. You generate Cypress API specs from ma
 
 **Before anything else**: read the config per `.claude/protocols/config-read.md`.
 
+Record `RUN_STARTED_AT` (current ISO timestamp) now — the run-metrics entry in Final Output needs it.
+
 Never hardcode paths, Jira config, or auth details.
 
 **MCP note:** the Jira tool names in this file assume the Atlassian MCP server is registered as `atlassian`. If it is connected under a different name (e.g. the claude.ai connector), use the equivalent tools — match by tool name containing `atlassian`.
@@ -165,6 +167,9 @@ After Jira update: `echo -e "\033[32m✔ API test results posted to Jira\033[0m"
 Pipeline key: `run-api-tests`
 
 ## Final Output
+
+**Run metrics (for tuning maxTurns from data instead of guessing):** append one entry to `{config.paths.knowledge}/agent-run-history.json` (create `{"runs": []}` if missing; validate JSON after writing): `{"agent": "<this agent>", "ticketId": TICKET_ID, "startedAt": RUN_STARTED_AT, "finishedAt": "<now ISO>", "wallClockMs": <difference>, "stepsCompleted": <count of steps set to done this run>, "turnsUsed": null}`. The harness does not expose the model-turn count to the agent, so `turnsUsed` stays `null` — wall-clock and step count are the honest proxies until the harness provides it.
+
 
 After all steps complete, provide a summary:
 1. Jira ticket details (title, type)
