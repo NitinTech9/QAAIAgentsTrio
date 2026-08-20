@@ -1,0 +1,13 @@
+{
+  "name": "qa-agents-framework",
+  "version": "1.0.0",
+  "private": true,
+  "description": "QA AI agents framework — qa-gates spec gate runner and selftest tooling",
+  "bin": {
+    "qa-gates": "scripts/gates/index.js"
+  },
+  "scripts": {
+    "gates": "node scripts/gates/index.js",
+    "test:gates": "node scripts/gates/__tests__/run.js"
+  }
+}

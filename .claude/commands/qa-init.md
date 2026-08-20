@@ -270,49 +270,23 @@ module.exports = defineConfig({
 
 ### Both frameworks — pre-commit gate
 
-CLAUDE.md and `/pr` reference `npm run hooks:install` and the `.githooks` pre-commit gate — scaffold both so the promise holds:
+CLAUDE.md and `/pr` reference `npm run hooks:install` and the `.githooks` pre-commit gate — scaffold both so the promise holds. The gate logic itself lives in `scripts/gates/` (shipped by the framework's `install.sh`; the same runner `/validate-spec` and `/qa-selftest` use) — the hook only invokes it, so there is exactly one copy of every scanner.
 
 **`package.json` script** (merge): `"hooks:install": "git config core.hooksPath .githooks"` — tell the user it is one-time per clone.
 
 **`.githooks/pre-commit`** (create the folder; make the file executable with `chmod +x .githooks/pre-commit`):
 ```bash
 #!/usr/bin/env bash
-# QA pre-commit gate — syntax, no-5xx, no NEW ambiguous 2xx/4xx oneOf, JSON validity.
+# QA pre-commit gate — runs the shared qa-gates scanners (validate-spec Checks
+# 1,4,6,8,9,9b,11) on staged specs, plus JSON validity.
 # Installed via: npm run hooks:install   Policy: never bypass with --no-verify.
 set -u
 fail=0
 
-specs=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(cy|spec)\.js$' || true)
-jsons=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.json$' || true)
+if [ -f scripts/gates/index.js ]; then node scripts/gates/index.js --staged || fail=1
+else npx --no-install qa-gates --staged || fail=1; fi
 
-for f in $specs; do
-  [ -f "$f" ] || continue
-
-  # 1. Syntax (CJS or ESM)
-  node --check "$f" || { echo "✗ syntax error: $f"; fail=1; }
-
-  # 2. No 5xx accepted anywhere in the spec (multi-line aware)
-  node -e '
-const fs=require("fs"),src=fs.readFileSync(process.argv[1],"utf8");const bad=[];let m;
-const arr=/oneOf\(\s*\[[\s\S]*?\]/g;
-while((m=arr.exec(src))) if(/\b5\d{2}\b/.test(m[0])) bad.push(src.slice(0,m.index).split(/\n/).length);
-const eq=/to\.(equal|include)\(\s*5\d{2}\b/g;
-while((m=eq.exec(src))) bad.push(src.slice(0,m.index).split(/\n/).length);
-for(const l of bad) console.log("✗ 5xx accepted in assertion: "+process.argv[1]+":"+l);
-process.exit(bad.length?1:0);' "$f" || fail=1
-
-  # 3. No NEW ambiguous 2xx/4xx oneOf on ADDED lines (escape hatch: // status-ambiguous: <reason>)
-  git diff --cached -U0 -- "$f" | grep -E '^\+[^+]' | sed 's/^+//' | node -e '
-let src="";process.stdin.on("data",d=>src+=d).on("end",()=>{
-const arr=/oneOf\(\s*\[[\s\S]*?\]/g;let m,bad=0;
-while((m=arr.exec(src))){const b=m[0];
-  const tail=(src.slice(arr.lastIndex).split("\n")[0]||"");
-  if(/\b2\d{2}\b/.test(b)&&/\b4\d{2}\b/.test(b)&&!/status-ambiguous/.test(b+tail)){
-    console.log("✗ NEW ambiguous 2xx/4xx oneOf added in "+process.argv[1]);bad=1;}}
-process.exit(bad);});' "$f" || fail=1
-done
-
-for f in $jsons; do
+for f in $(git diff --cached --name-only --diff-filter=ACM | grep -E '\.json$'); do
   [ -f "$f" ] || continue
   node -e 'JSON.parse(require("fs").readFileSync(process.argv[1],"utf8"))' \
     "$f" >/dev/null 2>&1 || { echo "✗ invalid JSON: $f"; fail=1; }
