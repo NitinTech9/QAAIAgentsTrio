@@ -4,9 +4,9 @@ You are given: **$ARGUMENTS** — `<TICKET-ID>`
 
 Let `TICKET_ID` = the first token of `$ARGUMENTS`.
 
-**If `TICKET_ID` does not match `[A-Z]+-[0-9]+`, stop immediately and tell the user:**
-> "A Jira ticket ID is required. Usage: `/create-schema-validation <TICKET-ID>`"
-**Do not proceed.**
+**If `TICKET_ID` is empty or does not match `^#?[A-Za-z0-9][A-Za-z0-9._-]*$`, stop immediately and tell the user:**
+> "A ticket ID is required. Usage: `/create-schema-validation <TICKET-ID>`"
+**Do not proceed.** (ID shape is source-specific — `fetch-ticket.md` does the strict per-source check; see `.claude/guides/ticket-sources.md`.)
 
 Schema coverage ships **with** the functional API automation, never deferred — this prevents the
 functional↔schema gap from accumulating. This command generates, for every endpoint the ticket's API

@@ -3,33 +3,40 @@
     "allow": [
       "mcp__postgres__query",
       "Bash(git add *)",
-      "Bash(grep -v ':0$')",
-      "Bash(sort -t: -k2 -rn)"
+      "Bash(git status *)",
+      "Bash(git diff *)",
+      "Bash(node --version)",
+      "Bash(npm --version)",
+      "Bash(npx cypress --version)",
+      "Bash(npx playwright --version)",
+      "Bash(gh auth status)",
+      "Bash(gh issue view *)",
+      "Bash(gh issue list *)"
     ],
     "deny": [
-      "Read(/absolute/path/to/your/backend/config.toml)",
-      "Edit(/absolute/path/to/your/backend/config.toml)",
-      "Read(/absolute/path/to/your/backend/**/.env*)",
-      "Edit(/absolute/path/to/your/backend/**/.env*)",
-      "Read(/absolute/path/to/your/backend/**/credentials*)",
-      "Edit(/absolute/path/to/your/backend/**/credentials*)",
-      "Read(/absolute/path/to/your/backend/**/secrets*)",
-      "Edit(/absolute/path/to/your/backend/**/secrets*)"
-    ],
-    "defaultMode": "plan",
-    "additionalDirectories": [
-      "/absolute/path/to/your/backend",
-      "/absolute/path/to/your/frontend"
+      "Read(**/.env)",
+      "Read(**/.env.*)",
+      "Edit(**/.env)",
+      "Edit(**/.env.*)",
+      "Read(**/*credentials*)",
+      "Edit(**/*credentials*)",
+      "Read(**/secrets.*)",
+      "Edit(**/secrets.*)",
+      "Read(**/*.pem)",
+      "Read(**/*.p12)",
+      "Read(**/id_rsa)",
+      "Read(**/id_ed25519)"
     ]
   },
   "hooks": {
     "PreToolUse": [
       {
-        "matcher": "Edit|Write",
+        "matcher": "Edit|Write|MultiEdit",
         "hooks": [
           {
             "type": "command",
-            "command": "FILE_PATH=$(cat | sed -n 's/.*\"file_path\"[[:space:]]*:[[:space:]]*\"\\([^\"]*\\)\".*/\\1/p'); if echo \"$FILE_PATH\" | grep -qE '/\\.env$|\\.env$'; then echo 'BLOCKED: .env contains secrets and must not be edited' >&2; exit 2; fi"
+            "command": "bash .claude/hooks/block-secret-writes.sh",
+            "timeout": 5
           }
         ]
       },
@@ -38,7 +45,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "CMD=$(cat | sed -n 's/.*\"command\"[[:space:]]*:[[:space:]]*\"\\(.*\\)\"/\\1/p'); if echo \"$CMD\" | grep -qi 'git commit' && echo \"$CMD\" | grep -qi 'co-authored-by'; then echo 'BLOCKED: Co-Authored-By is prohibited' >&2; exit 2; fi; if echo \"$CMD\" | grep -qiE 'git (push\\s+(-f|--force)|reset\\s+--hard|clean\\s+-fd?)'; then echo 'BLOCKED: destructive git command requires manual execution' >&2; exit 2; fi"
+            "command": "bash .claude/hooks/block-risky-bash.sh",
+            "timeout": 5
           }
         ]
       }

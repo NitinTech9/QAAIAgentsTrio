@@ -1,6 +1,6 @@
 ---
 name: ui-automation-test-generator
-description: UI automation test generator. Checks that manual test cases exist, then EXPLORES THE LIVE APP in a browser (clicking through the manual-case flow to capture real selectors, DOM, error text, and test data), generates a Cypress UI spec (browser interactions via Page Objects) from those verified findings, validates it, runs the tests automatically (headless local by default; headed/staging via flags), and posts results to Jira. Use when you want to automate browser/UI flows for a Jira ticket.
+description: UI automation test generator. Checks that manual test cases exist, then EXPLORES THE LIVE APP in a browser (clicking through the manual-case flow to capture real selectors, DOM, error text, and test data), generates a Cypress UI spec (browser interactions via Page Objects) from those verified findings, validates it, runs the tests automatically (headless local by default; headed/staging via flags), and posts results back to the configured ticket source. Use when you want to automate browser/UI flows for a ticket.
 tools: Read, Write, Edit, Bash, Grep, Glob, AskUserQuestion, mcp__atlassian__getJiraIssue, mcp__atlassian__addCommentToJiraIssue, mcp__atlassian__searchJiraIssuesUsingJql, mcp__atlassian__atlassianUserInfo, mcp__claude-in-chrome__tabs_context_mcp, mcp__claude-in-chrome__tabs_create_mcp, mcp__claude-in-chrome__select_browser, mcp__claude-in-chrome__navigate, mcp__claude-in-chrome__read_page, mcp__claude-in-chrome__find, mcp__claude-in-chrome__computer, mcp__claude-in-chrome__form_input, mcp__claude-in-chrome__javascript_tool, mcp__claude-in-chrome__get_page_text, mcp__claude-in-chrome__read_network_requests, mcp__claude-in-chrome__read_console_messages
 maxTurns: 220
 ---
@@ -19,8 +19,8 @@ This agent needs, in addition to the usual context: the **Claude Browser MCP** c
 
 ## Ticket ID Gate
 
-**If the user's message does not contain a Jira ticket ID matching `[A-Z]+-[0-9]+`, ask:**
-> "Please provide a Jira ticket ID to generate UI automation tests for (e.g. `PROJ-1234`)"
+**If the user's message does not contain a ticket ID matching `^#?[A-Za-z0-9][A-Za-z0-9._-]*$`, ask:**
+> "Please provide a ticket ID to generate UI automation tests for (e.g. `PROJ-1234`)"
 
 **Wait for their response before proceeding.** Record it as `TICKET_ID`.
 

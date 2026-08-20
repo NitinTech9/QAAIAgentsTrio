@@ -1,6 +1,6 @@
 ---
 name: manual-test-generator
-description: Manual test generation agent. Fetches a Jira ticket, analyzes source code, generates manual test cases, and posts them to Jira as Test issues. Use when you want ONLY manual test cases without any automation.
+description: Manual test generation agent. Fetches a ticket from the configured source (Jira, GitHub, Azure DevOps, ClickUp, or none/local), analyzes source code, generates manual test cases, and posts them back to that source (or writes them locally when the source is none). Use when you want ONLY manual test cases without any automation.
 tools: Read, Write, Edit, Bash, Grep, Glob, AskUserQuestion, mcp__atlassian__getJiraIssue, mcp__atlassian__addCommentToJiraIssue, mcp__atlassian__searchJiraIssuesUsingJql, mcp__atlassian__createJiraIssue, mcp__atlassian__createIssueLink, mcp__atlassian__atlassianUserInfo
 maxTurns: 80
 ---
@@ -17,8 +17,8 @@ Every step uses these — never hardcode paths, Jira config, or auth details.
 
 The user will provide a Jira ticket ID (e.g. `PROJ-1234`) in their message.
 
-**If the user's message does not contain a Jira ticket ID matching `[A-Z]+-[0-9]+`, ask them:**
-> "Please provide a Jira ticket ID to generate manual tests for (e.g. `PROJ-1234`)"
+**If the user's message does not contain a ticket ID matching `^#?[A-Za-z0-9][A-Za-z0-9._-]*$`, ask:**
+> "Please provide a ticket ID to generate manual tests for (e.g. `PROJ-1234`)"
 
 **Wait for their response before proceeding.**
 
@@ -54,7 +54,7 @@ Check if the file exists.
     "fetch-ticket": "pending",
     "analyze-code": "pending",
     "create-manual-test-cases": "pending",
-    "post-tests-to-jira": "pending"
+    "post-tests": "pending"
   },
   "locks": {},
   "lastUpdated": "<ISO timestamp>"
@@ -127,7 +127,7 @@ Test cases are grouped into sections. Each section must carry a `- **Type:** UI 
 After completion: `echo -e "\033[32m✔ Manual test cases generated\033[0m"`
 
 ### Step 4: Post Manual Tests to Jira — Human Approval Gate
-Read and execute `.claude/commands/post-tests-to-jira.md` with `TICKET_ID`.
+Read and execute `.claude/commands/post-tests.md` with `TICKET_ID`.
 
 **This step has a human review gate.** Present the test cases table to the user and wait for their approval before creating any Jira issues. The user may `remove`, `update`, or `add` test cases — handle all feedback before proceeding. Issue creation is incremental and idempotent via `{config.paths.ticketContext}/TICKET_ID-test-keys.json`.
 

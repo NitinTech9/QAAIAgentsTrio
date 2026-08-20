@@ -5,7 +5,7 @@ description: Onboarding guide and setup-state checker for the QA agents framewor
 
 # QA Framework Help (`/qa-help`)
 
-You answer one question: **"what should this person do next?"** Inspect the actual state of the repo, then print a short, personalized checklist — never a generic docs dump. If the user passed a ticket ID (`[A-Z]+-[0-9]+` in `$ARGUMENTS`), also report that ticket's pipeline position.
+You answer one question: **"what should this person do next?"** Inspect the actual state of the repo, then print a short, personalized checklist — never a generic docs dump. If the user passed a ticket ID (any `^#?[A-Za-z0-9][A-Za-z0-9._-]*$` token in `$ARGUMENTS`), also report that ticket's pipeline position.
 
 ## Checks (run in order, stop narrating — collect results, then report once)
 

@@ -1,12 +1,8 @@
-# Fetch Jira Ticket
+# Fetch Ticket
 
-You are given a Jira ticket ID: **$ARGUMENTS**
+You are given a ticket ID: **$ARGUMENTS**
 
 `$ARGUMENTS` may optionally contain a second positional token (used by other commands). Only the first token (the ticket ID) is used here.
-
-**If `$ARGUMENTS` is empty or the first token does not match `[A-Z]+-[0-9]+`, stop immediately and tell the user:**
-> "A Jira ticket ID is required. Usage: `/fetch-ticket <TICKET-ID>` (e.g. `/fetch-ticket PROJ-1234`)"
-**Do not proceed with any further steps.**
 
 Let `TICKET_ID` = the first token of `$ARGUMENTS`.
 
@@ -15,8 +11,20 @@ Let `TICKET_ID` = the first token of `$ARGUMENTS`.
 Read `.claude/project-config.json` and extract all values. Then read `.claude/project-config.local.json` if it exists — merge its values over the base config (local takes precedence).
 
 Extract:
-- `project.jira.cloudId` → `CLOUD_ID`
+- `project.ticketSource.type` → `SOURCE` (if the whole `ticketSource` block is absent — a pre-1.0 config — default `SOURCE = "jira"`)
+- `project.ticketSource.{SOURCE}` → `SRC` (the source's own settings block). For `jira`, if `ticketSource.jira` is absent, fall back to the deprecated top-level `project.jira`.
 - `project.paths.ticketContext` → `CONTEXT_DIR`
+
+## Validate the Ticket ID
+
+The valid ID shape depends on `SOURCE`. Look up the pattern for `SOURCE` in the "Ticket ID validation" table in `.claude/guides/ticket-sources.md`.
+
+**If `$ARGUMENTS` is empty, or `TICKET_ID` does not match that pattern, stop immediately** and tell the user the expected shape for their configured source, e.g.:
+> "A ticket ID is required. Your configured source is `github`, so the ID looks like `#412`. Usage: `/fetch-ticket <TICKET-ID>`"
+
+**Do not proceed with any further steps.** Never guess or normalize an ID that fails the pattern.
+
+For `SOURCE = github`, strip a leading `#` from `TICKET_ID` before using it in any file path.
 
 ## Canonical Pipeline State Shape
 
@@ -37,68 +45,64 @@ All commands and agents use this exact shape. Read/write `steps.<key>` — not t
 Read `{CONTEXT_DIR}/TICKET_ID-pipeline-state.json` (if it exists).
 If `steps["fetch-ticket"]` is `done`, print: `✔ Fetch ticket already completed — skipping` and exit.
 
-## Resolve Cloud ID
+## Fetch the Ticket
 
-The config `cloudId` may be a site domain (e.g. `your-org.atlassian.net`) or a UUID. The Jira MCP tools require the actual cloud ID (UUID format).
+Read the section for `SOURCE` in `.claude/guides/ticket-sources.md` and execute its **Fetch** steps exactly. That guide is the only place that knows how a tracker works — do not improvise an API call, and do not fall back to a different tracker if the configured one fails.
 
-**If `CLOUD_ID` does NOT look like a UUID** (i.e. it contains `.` or letters without hyphens):
-1. Call `mcp__atlassian__getAccessibleAtlassianResources` to list available sites
-2. Find the site whose `url` contains the configured domain
-3. Use that site's `id` as the actual `CLOUD_ID`
-4. If no match is found, try using the configured value as-is (the MCP adapter may resolve it)
+Preflight before the first call:
 
-Cache the resolved UUID — do not re-discover on every call.
-
-## Fetch Issue Details
-
-Use `mcp__atlassian__getJiraIssue`:
-- `cloudId`: `CLOUD_ID` (resolved UUID)
-- `issueIdOrKey`: `TICKET_ID`
-- `fields`: `["summary","description","issuetype","status","priority","labels","components","fixVersions","attachment","subtasks","comment"]`
-- `expand`: `renderedFields`
-- `responseContentFormat`: `markdown`
-
-## Handle Jira API Errors
-
-If `getJiraIssue` returns an error, classify it and respond accordingly:
-
-| Error | Meaning | Action |
+| `SOURCE` | Requires | If missing, stop and say |
 |---|---|---|
-| **404 Not Found** | Ticket ID doesn't exist or no access | Stop. Print: `❌ Jira ticket TICKET_ID not found. Verify the ticket ID exists and you have access.` |
-| **401 Unauthorized** | Auth token expired or invalid | Stop. Print: `❌ Jira authentication failed. Re-authenticate via the Atlassian MCP connection.` |
-| **403 Forbidden** | No permission for this project | Stop. Print: `❌ No permission to access TICKET_ID. Check your Jira project permissions.` |
-| **Network / timeout** | Jira unreachable | Stop. Print: `❌ Could not reach Jira. Check your network connection and MCP server status.` |
-| **Other error** | Unexpected | Stop. Print the raw error message so the user can diagnose. |
+| `jira` | Atlassian MCP connected | `❌ Jira is configured but the Atlassian MCP is not connected. Connect it, or set ticketSource.type to "none" to run locally.` |
+| `github` | `gh` installed and `gh auth status` clean | `❌ GitHub is configured but gh is not authenticated. Run: gh auth login` |
+| `azure` | `$SRC.tokenEnvVar` set in the environment | `❌ Azure DevOps is configured but $<name> is not set in your environment.` |
+| `clickup` | `$SRC.tokenEnvVar` set in the environment | `❌ ClickUp is configured but $<name> is not set in your environment.` |
+| `none` | nothing | — |
 
-Do NOT proceed with empty/partial data. Do NOT create placeholder files on error.
+Never print, echo, or write the value of a token env var. Reference it by name only.
+
+Map the source's response onto the normalized ticket contract in the guide. Fields the source cannot supply are `null` or `[]` — **never invented**. Set `source` to `SOURCE`.
+
+## Handle Fetch Errors
+
+Classify and stop. The per-source error tables are in the guide; the universal rules are:
+
+| Class | Action |
+|---|---|
+| Not found (404) | Stop. `❌ Ticket TICKET_ID not found in {SOURCE}. Verify the ID and your access.` |
+| Auth (401) | Stop. Name the specific credential to renew for `SOURCE`. |
+| Permission (403) | Stop. `❌ No permission to access TICKET_ID.` |
+| Network / timeout | Stop. `❌ Could not reach {SOURCE}. Check your connection.` |
+| Other | Stop. Print the raw error so the user can diagnose. |
+
+Do NOT proceed with empty/partial data. Do NOT create placeholder files on error. Do NOT substitute a local ticket for a failed remote fetch — that silently changes what is being tested.
 
 ## Extract Comments Reliably
 
-Comments are now guaranteed in the response under `fields.comment.comments` (because we explicitly requested the `comment` field above). Extract **every comment** — do not truncate or summarise.
+Extract **every comment** the source returned — do not truncate or summarise. Each comment must include `author`, `created` (ISO 8601), and `body` (full text). If the source returned none, record an empty array.
 
-Each comment must include:
-- `author` — `author.displayName`
-- `created` — `created` timestamp
-- `body` — full markdown text
-
-If `fields.comment.comments` is missing or empty, record an empty comments array. Do **not** fall back to `searchJiraIssuesUsingJql` — that tool returns issue metadata, not comments.
+Per-source notes (where the comments live, and the fallback traps to avoid) are in the guide. Two that matter:
+- **Jira** — comments arrive under `fields.comment.comments` because `comment` is requested explicitly. Never fall back to `searchJiraIssuesUsingJql`; it returns metadata, not comments.
+- **Azure / ClickUp** — comments require a **second** API call. A ticket with no `comments` key in the first response does not mean it has no comments; make the call.
 
 ## Extract and Save Ticket Context
 
-Save to `{CONTEXT_DIR}/TICKET_ID.json`:
+Save to `{CONTEXT_DIR}/TICKET_ID.json`, using the **normalized ticket contract** in `.claude/guides/ticket-sources.md` exactly — every downstream command reads this file and must not be able to tell which tracker it came from:
 
 ```json
 {
   "ticketId": "TICKET_ID",
+  "source": "jira|github|azure|clickup|none",
+  "url": "... or null",
   "summary": "...",
-  "issueType": "Story|Bug|...",
+  "issueType": "Story|Bug|Task",
   "status": "...",
-  "priority": "...",
+  "priority": "... or null",
   "labels": [],
   "components": [{"id": "...", "name": "..."}],
   "fixVersions": [{"id": "...", "name": "..."}],
   "description": "... (full markdown) ...",
-  "acceptanceCriteria": "...",
+  "acceptanceCriteria": "... or null",
   "attachments": [],
   "comments": [
     {
@@ -111,7 +115,9 @@ Save to `{CONTEXT_DIR}/TICKET_ID.json`:
 }
 ```
 
-For each subtask entry in `fields.subtasks`, call `getJiraIssue` again to fetch its full details if needed for analysis — otherwise store only key + summary.
+`issueType` must always be one of `Story` | `Bug` | `Task` — it selects `testLimits.bugMaxTests` vs `storyMaxTests` downstream. Map the source's native type per the guide (a `bug`/`defect`/`regression` label or tag → `Bug`, otherwise `Story`).
+
+For each subtask, fetch its full details only if needed for analysis — otherwise store key + summary only.
 
 ## Extract Discussion Insights
 
@@ -145,6 +151,7 @@ Update `{CONTEXT_DIR}/TICKET_ID-pipeline-state.json`:
 ## Output
 
 Print a summary:
+- Source (`SOURCE`) and ticket URL, if the source has one
 - Title, type, status, priority
 - Key acceptance criteria
 - Number of comments fetched and key insights extracted
