@@ -59,6 +59,18 @@ jobs:
           done
           exit $fail
 
+      - name: Trust boundary referenced by every ticket-context reader
+        run: |
+          fail=0
+          for f in $(grep -l 'config.paths.ticketContext' .claude/commands/*.md); do
+            grep -q 'untrusted-content' "$f" || { echo "✗ $f reads ticketContext but never references the untrusted-content rule"; fail=1; }
+          done
+          for f in .claude/agents/*.md; do
+            grep -q 'untrusted-content' "$f" || { echo "✗ $f (agent) lacks the untrusted-content rule"; fail=1; }
+          done
+          grep -q 'UNTRUSTED_TRACKER_CONTENT' .claude/commands/fetch-ticket.md || { echo "✗ fetch-ticket.md does not emit the data fence"; fail=1; }
+          exit $fail
+
       - name: No v5-era @cypress/grep usage (regression guard)
         run: |
           # `--env grepTags=` (with =) is the executable form; bare `--env grepTags` in prose
