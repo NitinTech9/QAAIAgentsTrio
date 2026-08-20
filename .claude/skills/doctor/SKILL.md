@@ -21,11 +21,7 @@ Any Check-0 failure: report it with the exact fix and note that the environment 
 
 ## Run it
 
-```bash
-bash scripts/qa-doctor.sh
-```
-
-If `scripts/qa-doctor.sh` (or `scripts/db-ping.js`) does not exist in this repo, do not fail — perform the same checks directly with individual commands (`node --version`, `env | grep ELECTRON_RUN_AS_NODE`, `curl` the base URLs from config, check the env file exists, a `SELECT 1` per DB if `config.dbVerification` is not false).
+Run the checks directly with individual commands: `node --version`, `env | grep ELECTRON_RUN_AS_NODE`, `curl` the base URLs from config, check the env file exists, and a `SELECT 1` per DB (inline `node -e` with `pg`) if `config.dbVerification` is not false. (If the project has its own doctor script, prefer it — but never assume one exists.)
 
 This checks, in order:
 1. **Node version** — the suite requires Node 20+; older versions fail to bootstrap the test runner.
@@ -33,7 +29,7 @@ This checks, in order:
 3. **Primary backend** reachable at its configured base URL (e.g. `http://localhost:4000/api/health`).
 4. **Secondary backend** (if your suite tests one) reachable at its base URL.
 5. **Env file** (`config.app.envFile`, e.g. `cypress.env.json`) present with the required login + DB keys (the file is gitignored/local).
-6. **Databases** — `SELECT 1` against each Postgres DB the suite uses (`scripts/db-ping.js`, or an inline `node -e` with `pg`).
+6. **Databases** — `SELECT 1` against each Postgres DB the suite uses (inline `node -e` with `pg`).
 
 **Playwright projects** (`testFramework: "playwright"`): checks 1, 3, 4, and 6 apply unchanged; skip check 2 (`ELECTRON_RUN_AS_NODE` is Cypress-specific) and for check 5 use the env file named by `config.app.envFile`. Also verify `playwright.config.js` exists and browsers are installed (`npx playwright --version`).
 
