@@ -115,9 +115,9 @@ cat cypress/reports/failures-baseline.json
 skills"). For each failure:
 - Match the error against `cypress/knowledge/failure-patterns.json` (`patterns`) — a matching
   `FP-###` already tells you the cause + proven fix; jump straight to it in Phase 4.
-- Check `cypress/knowledge/api-behavior-notes.json` (`known_500_bugs`) — if the failing
-  endpoint is a documented app-bug, classify it as **deferred (app-side)** immediately; do not
-  attempt a fix and never accept the 5xx in an assertion.
+- Check `cypress/knowledge/api-behavior-notes.json` per `.claude/protocols/knowledge-protocol.md` —
+  a documented (fresh, ticketed) app-bug is **deferred (app-side)**: no fix attempt, never accept
+  the failure in an assertion; a stale/ticket-less entry means re-verify first.
 - Cross-check `cypress/knowledge/test-run-history.json` — a test that flips pass/fail across runs is
   **flaky**; mark it as such rather than "fixing" it.
 

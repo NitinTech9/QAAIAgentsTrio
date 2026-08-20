@@ -126,6 +126,19 @@ output_mode: "count"
 
 Manually compare by module. For each module folder that exists in swagger but has NO corresponding folder in `config.paths.apiTests`, flag as **❌ Not Started**. For modules with a folder but fewer than 3 test cases, flag as **⚠️ Partial**. (The `url:` count is an estimate — endpoints exercised through helpers or `cy.request` may be under-counted; label it as an estimate in the report.)
 
+### Phase 4b — Coverage risks from behavior notes (MANDATORY in every report)
+
+Every `known_500_bugs`/`endpoint_quirks` entry suppresses or alters coverage invisibly unless
+reported. Run:
+
+```bash
+node scripts/knowledge-audit.js "{config.paths.knowledge}/api-behavior-notes.json"
+```
+
+and copy its `COVERAGE RISK:` lines into the report verbatim (endpoint, age, ticket, and any
+STALE / NO TICKET re-verify flag). A suppressed endpoint must read as "deliberately skipped,
+N days old, tracked by TICKET" — never as "never in scope". Rules: `.claude/protocols/knowledge-protocol.md`.
+
 ### Phase 5 — Score Health
 
 Compute the **QA Health Score** (0–100) across 6 dimensions:

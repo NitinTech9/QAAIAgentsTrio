@@ -25,9 +25,9 @@ The user will provide EITHER:
 Before diagnosing from scratch, read `cypress/knowledge/failure-patterns.json` (`patterns`) and
 match the error string against a known `FP-###`. If it matches, apply that pattern's documented
 `fix` directly — this is the fastest, already-proven path (see `cypress/knowledge/_README.md` →
-"Protocol for agents & skills"). Also check `cypress/knowledge/api-behavior-notes.json`: if the
-failing endpoint is a **documented 5xx app-bug** (`known_500_bugs`), the test is failing
-because the app is broken — do NOT "fix" it by accepting the 5xx; report it as a deferred app-bug.
+"Protocol for agents & skills"). Also check `cypress/knowledge/api-behavior-notes.json` per
+`.claude/protocols/knowledge-protocol.md`: a documented (fresh, ticketed) app-bug means the app is
+broken — report a deferred app-bug, never "fix" the test by accepting the failure.
 
 If no entry matches, diagnose normally — and record the new pattern in the write-back step.
 

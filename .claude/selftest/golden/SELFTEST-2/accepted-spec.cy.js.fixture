@@ -1,0 +1,59 @@
+describe("Test Scenario: SELFTEST-2 Cancel Widget Regression Tests", () => {
+    let sessionCookie;
+    let csrfToken;
+    let widgetId;
+
+    before(() => {
+        cy.task("queryDb", `select id from widgets where status = 'active' order by id desc limit 1`).then((rows) => {
+            expect(rows && rows.length > 0, "found an active widget").to.be.true;
+            widgetId = rows[0].id;
+        });
+    });
+
+    beforeEach(() => {
+        cy.loginAndGetSessionCookie().then(() => {
+            cy.get("@sessionCookie").then((c) => { sessionCookie = c; });
+            cy.get("@csrfToken").then((t) => { csrfToken = t; });
+        });
+    });
+
+    afterEach(() => {
+        cy.clearCookies();
+    });
+
+    it("[SELFTEST-2] Test Case 01: Validate PUT cancel returns 200 and persists status archived", { tags: ["@PR", "@Regression"] }, () => {
+        cy.api({
+            method: "PUT",
+            url: `/api/widgets/${widgetId}/cancel`,
+            headers: { Cookie: sessionCookie, "x-csrf-token": csrfToken },
+            failOnStatusCode: false,
+        }).then((response) => {
+            expect(response.status).to.equal(200);
+            cy.task("queryDb", `select status from widgets where id = ${widgetId}`).then((rows) => {
+                expect(rows[0].status).to.equal("archived");
+            });
+        });
+    });
+
+    it("[SELFTEST-2] Test Case 02: Validate cancelling a nonexistent widget returns 404", { tags: ["@Regression"] }, () => {
+        cy.api({
+            method: "PUT",
+            url: "/api/widgets/999999/cancel",
+            headers: { Cookie: sessionCookie, "x-csrf-token": csrfToken },
+            failOnStatusCode: false,
+        }).then((response) => {
+            expect(response.status).to.equal(404);
+        });
+    });
+
+    it("[SELFTEST-2] Test Case 03: Validate unauthenticated cancel returns 401 or 403", { tags: ["@Regression"] }, () => {
+        cy.clearCookies();
+        cy.api({
+            method: "PUT",
+            url: `/api/widgets/${widgetId}/cancel`,
+            failOnStatusCode: false,
+        }).then((response) => {
+            expect(response.status).to.be.oneOf([401, 403]);
+        });
+    });
+});

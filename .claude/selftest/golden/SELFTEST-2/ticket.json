@@ -1,0 +1,14 @@
+{
+  "key": "SELFTEST-2",
+  "summary": "Bug: cancelling a widget does not archive it",
+  "issuetype": "Bug",
+  "status": "Done",
+  "description": "PUT /api/widgets/{id}/cancel returned 200 but the widget's status stayed 'active' in the widgets table. Fixed in backend commit fictional-abc123 — status now transitions to 'archived'. A regression spec must prove the persistence, not just the 200. Bundled fake ticket used by /qa-selftest golden — endpoints are fictional.",
+  "comments": [
+    {
+      "author": "Backend Dev",
+      "created": "2026-02-10T09:00:00Z",
+      "body": "Root cause: the handler updated the response object but never wrote the status column. The fix persists status='archived'. Cancelling an unknown id returns 404."
+    }
+  ]
+}

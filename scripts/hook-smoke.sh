@@ -20,4 +20,29 @@ t block-risky-bash.sh '{"tool_input":{"command":"git log --oneline"},"descriptio
 t block-secret-writes.sh '{"tool_input":{"file_path":"/x/.env"}}' 2 "blocks .env writes"
 t block-secret-writes.sh '{"tool_input":{"file_path":"/x/cypress/e2e/API/01-login.cy.js"}}' 0 "allows spec writes"
 
+# --- block-risky-mcp.sh — run in a temp project so the config under test is controlled
+MCP_HOOK="$PWD/.claude/hooks/block-risky-mcp.sh"
+TMPPROJ=$(mktemp -d)
+mkdir -p "$TMPPROJ/.claude"
+cat > "$TMPPROJ/.claude/project-config.json" <<'JSON'
+{"project":{"app":{"primaryBaseUrl":"http://localhost:4000","secondaryBaseUrl":null,"allowedHosts":["staging.example.com"]},"productionProtection":{"prodUrlPatterns":["prod\\.example\\.com"]}}}
+JSON
+
+tm() { # tm <payload> <expected-exit> <label> [env]
+  ( cd "$TMPPROJ" && printf '%s' "$1" | env ${4:-QA_SMOKE=1} bash "$MCP_HOOK" >/dev/null 2>&1 )
+  actual=$?
+  if [ "$actual" -eq "$2" ]; then echo "PASS  block-risky-mcp.sh: $3"
+  else echo "FAIL  block-risky-mcp.sh: $3 (expected exit $2, got $actual)"; fail=1; fi
+}
+
+tm '{"tool_name":"mcp__claude-in-chrome__navigate","tool_input":{"url":"http://localhost:4000/login"}}' 0 "allows localhost navigate"
+tm '{"tool_name":"mcp__claude-in-chrome__navigate","tool_input":{"url":"https://staging.example.com/orders"}}' 0 "allows allowlisted staging host"
+tm '{"tool_name":"mcp__claude-in-chrome__navigate","tool_input":{"url":"https://prod.example.com/admin"}}' 2 "blocks production URL pattern"
+tm '{"tool_name":"mcp__claude-in-chrome__navigate","tool_input":{"url":"https://evil.example.net/"}}' 2 "blocks navigate to unrelated host"
+tm 'not-json{{' 2 "blocks unparseable payload (fail closed)"
+tm '{"tool_name":"mcp__atlassian__addCommentToJiraIssue","tool_input":{"issueIdOrKey":"PROJ-2"}}' 2 "blocks tracker write outside QA_ACTIVE_TICKET scope" "QA_ACTIVE_TICKET=PROJ-1"
+tm '{"tool_name":"mcp__atlassian__addCommentToJiraIssue","tool_input":{"issueIdOrKey":"PROJ-1"}}' 0 "allows tracker write to the scoped ticket" "QA_ACTIVE_TICKET=PROJ-1"
+tm '{"tool_name":"mcp__atlassian__addCommentToJiraIssue","tool_input":{"issueIdOrKey":"PROJ-9"}}' 0 "logs (allows) unscoped tracker write when no QA_ACTIVE_TICKET"
+
+rm -rf "$TMPPROJ"
 exit $fail

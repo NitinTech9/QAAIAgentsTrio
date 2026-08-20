@@ -1,0 +1,77 @@
+describe("Test Scenario: SELFTEST-3 Widget Tags API Tests", () => {
+    let sessionCookie;
+    let csrfToken;
+    let widgetId;
+    let tagId;
+
+    before(() => {
+        cy.task("queryDb", `select id from widgets where status = 'active' order by id desc limit 1`).then((rows) => {
+            expect(rows && rows.length > 0, "found a widget").to.be.true;
+            widgetId = rows[0].id;
+        });
+    });
+
+    beforeEach(() => {
+        cy.loginAndGetSessionCookie().then(() => {
+            cy.get("@sessionCookie").then((c) => { sessionCookie = c; });
+            cy.get("@csrfToken").then((t) => { csrfToken = t; });
+        });
+    });
+
+    afterEach(() => {
+        cy.clearCookies();
+    });
+
+    it("[SELFTEST-3] Test Case 01: Validate GET tags returns 200 with an array", { tags: ["@PR", "@Smoke"] }, () => {
+        cy.api({
+            method: "GET",
+            url: `/api/widgets/${widgetId}/tags`,
+            headers: { Cookie: sessionCookie },
+            failOnStatusCode: false,
+        }).then((response) => {
+            expect(response.status).to.equal(200);
+            expect(response.body).to.be.an("array");
+        });
+    });
+
+    it("[SELFTEST-3] Test Case 02: Validate POST tag returns 201 and persists to widget_tags", { tags: ["@PR", "@Regression"] }, () => {
+        cy.api({
+            method: "POST",
+            url: `/api/widgets/${widgetId}/tags`,
+            headers: { Cookie: sessionCookie, "x-csrf-token": csrfToken },
+            body: { label: "selftest tag" },
+            failOnStatusCode: false,
+        }).then((response) => {
+            expect(response.status).to.equal(201);
+            tagId = response.body.id;
+            cy.task("queryDb", `select id from widget_tags where id = ${tagId}`).then((rows) => {
+                expect(rows.length).to.equal(1);
+            });
+        });
+    });
+
+    it("[SELFTEST-3] Test Case 03: Validate DELETE tag returns 200 and removes the row", { tags: ["@Regression"] }, () => {
+        cy.api({
+            method: "DELETE",
+            url: `/api/widgets/${widgetId}/tags/${tagId}`,
+            headers: { Cookie: sessionCookie, "x-csrf-token": csrfToken },
+            failOnStatusCode: false,
+        }).then((response) => {
+            expect(response.status).to.equal(200);
+            cy.task("queryDb", `select id from widget_tags where id = ${tagId}`).then((rows) => {
+                expect(rows.length).to.equal(0);
+            });
+        });
+    });
+
+    it("[SELFTEST-3] Test Case 04: Validate unauthenticated tags request returns 401 or 403", { tags: ["@Regression"] }, () => {
+        cy.clearCookies();
+        cy.api({
+            method: "GET",
+            url: `/api/widgets/${widgetId}/tags`,
+            failOnStatusCode: false,
+        }).then((response) => {
+            expect(response.status).to.be.oneOf([401, 403]);
+        });
+    });
+});
