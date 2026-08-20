@@ -17,7 +17,7 @@ This agent needs, in addition to the usual context: the **Claude Browser MCP** c
 
 ## Setup: Read Project Config
 
-**Before anything else**, read `.claude/project-config.json` and store all values. Then read `.claude/project-config.local.json` if it exists — merge its values over the base config (local takes precedence).
+**Before anything else**: read the config per `.claude/protocols/config-read.md`.
 
 ## Ticket ID Gate
 
@@ -66,7 +66,7 @@ Read `{config.paths.manualCases}/TICKET_ID.md` and count test cases tagged `**Ty
 
 ## Canonical Pipeline State
 
-Read `{config.paths.ticketContext}/TICKET_ID-pipeline-state.json` (canonical shape). If the file exists but `JSON.parse` fails (truncated / invalid), do NOT crash — back it up to `…-pipeline-state.corrupt.json`, announce it, and recreate the canonical shape. If missing, create:
+Read `{config.paths.ticketContext}/TICKET_ID-pipeline-state.json` (canonical shape). Corrupt-file recovery per the protocol. If missing, create:
 
 ```json
 {
@@ -91,7 +91,7 @@ For every step, **skip any that already show `done`**.
 
 ## Run Lock & Atomic Writes (enforced)
 
-Follow the canonical **Atomic State Writes** and **Run Lock** protocol in `manual-test-generator.md`. Your lock domain is **`ui`**: acquire it before Step 1 (stop if another `ui` run holds a fresh lock — override only if stale >60 min or the user passed `force-lock`), refresh `lockedAt` on every step write, release (`{"locks":{"ui":null}}`) on the final write — including early stops. Every state write goes through the atomic temp→rename snippet. Running in parallel with `api-automation-test-generator` for the same ticket is safe — the domains are independent and writes are atomic.
+Follow the canonical **Atomic State Writes** and **Run Lock** protocol in `.claude/protocols/state-and-locks.md`. Your lock domain is **`ui`**: acquire it before Step 1 (stop if another `ui` run holds a fresh lock — override only if stale >60 min or the user passed `force-lock`), refresh `lockedAt` on every step write, release (`{"locks":{"ui":null}}`) on the final write — including early stops. Every state write goes through the atomic temp→rename snippet. Running in parallel with `api-automation-test-generator` for the same ticket is safe — the domains are independent and writes are atomic.
 
 ## Self-Heal Prerequisites
 

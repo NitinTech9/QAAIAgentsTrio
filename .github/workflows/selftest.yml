@@ -59,6 +59,17 @@ jobs:
           done
           exit $fail
 
+      - name: Agents reference the canonical protocols (no re-drift)
+        run: |
+          fail=0
+          for f in .claude/agents/*.md; do
+            for p in state-and-locks config-read untrusted-content; do
+              grep -q "protocols/$p.md" "$f" || { echo "✗ $f does not reference protocols/$p.md"; fail=1; }
+            done
+          done
+          grep -q 'renameSync' .claude/protocols/state-and-locks.md || { echo "✗ atomic snippet missing from state-and-locks.md"; fail=1; }
+          exit $fail
+
       - name: Knowledge audit surfaces stale ticket-less suppressions (selftest)
         run: node scripts/knowledge-audit.js --selftest
 

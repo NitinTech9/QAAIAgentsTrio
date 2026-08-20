@@ -13,7 +13,7 @@ You verify that **the framework itself** still works — not the product under t
 **Flags:** `quick` — run Phases 1–3 only (deterministic checks, ~no generation cost). `keep` — leave Phase 4/5 artifacts in place for inspection instead of cleaning up. `golden` — also run Phase 5, the golden-corpus comparison (generation cost: one spec per golden ticket).
 
 **Principles:**
-- Test what is actually shipped: whenever a phase needs a script or protocol, **extract it from the command file it lives in** (e.g. the gate scripts from `validate-spec.md`, the atomic-write snippet from `manual-test-generator.md`) — never use a copy embedded here, or drift would go undetected.
+- Test what is actually shipped: whenever a phase needs a script or protocol, **extract it from the command file it lives in** (e.g. the gate scripts from `validate-spec.md`, the atomic-write snippet from `.claude/protocols/state-and-locks.md`) — never use a copy embedded here, or drift would go undetected.
 - Collect every failure before reporting — don't stop at the first one. Any failure ⇒ overall verdict is ❌.
 - Work in a temp dir from `mktemp -d` for Phases 2–3; only Phase 4 touches configured paths (and cleans up after itself).
 - **Shell gotcha:** the harness shell may be zsh, which does NOT word-split unquoted variables — iterate multi-line lists with `... | while read -r x; do ...; done`, never `for x in $var`. A mis-split loop produces false MISSING results.
@@ -67,7 +67,7 @@ Read `.claude/project-config.json` (+ `project-config.local.json` if present). T
    the posting step on tickets that were already posted. If the reference is gone, that is a
    regression, not a cleanup.
 8. **Pipeline-state contract:** each step key declared in an agent's canonical state JSON is also used by its owning command file (`fetch-ticket`, `analyze-code`, `create-manual-test-cases`, `post-tests`, `create-api-automated-test-cases`, `create-schema-validation`, `validate-api-spec`, `validate-ui-spec`, `run-api-tests`, `run-ui-tests`, `explore-live-app`, `create-ui-automated-test-cases`, `generate-postman-collection`).
-9. **Lock protocol declared everywhere:** all four agents reference the Run Lock protocol and their own domain (`manual`, `api`, `ui`, `postman`); the canonical atomic-write snippet exists in `manual-test-generator.md`.
+9. **Lock protocol declared everywhere:** all four agents reference the Run Lock protocol and their own domain (`manual`, `api`, `ui`, `postman`); the canonical atomic-write snippet exists in `.claude/protocols/state-and-locks.md` and all four agents reference that protocol.
 
 ## Phase 2 — Spec gate scanners (fixture round-trip)
 
@@ -83,7 +83,7 @@ Any FAIL line means someone changed a gate or a fixture — report the failing a
 
 ## Phase 3 — State & locking mechanics
 
-Using the **canonical atomic-write snippet extracted from `manual-test-generator.md`**, in the same `$TMP`:
+Using the **canonical atomic-write snippet extracted from `.claude/protocols/state-and-locks.md`**, in the same `$TMP`:
 
 1. **Create-from-missing:** run the snippet against a nonexistent `state.json` with `{"steps":{"fetch-ticket":"done"}}` → file exists, valid JSON, step recorded, `lastUpdated` set.
 2. **Lock + step in one write:** update with an `api` lock and `{"steps":{"run-api-tests":"done"}}` → both present, earlier keys preserved.

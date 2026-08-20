@@ -11,7 +11,7 @@ Derive `STATE_KEY` = `validate-<SPEC_TYPE>-spec`; `SEARCH_ROOT` = `{config.paths
 
 ## Setup
 
-Read `.claude/project-config.json` (merge `.claude/project-config.local.json` over it if present) and the framework template `.claude/templates/{config.testFramework}-javascript.md` — inline examples here are Cypress; translate per the template, never emitting `cy.*` into a non-Cypress suite. Read `{config.paths.ticketContext}/TICKET_ID-pipeline-state.json`; if `steps[STATE_KEY]` is `done`, print `✔ Spec validation already completed — skipping` and exit.
+Read the config per `.claude/protocols/config-read.md` and the framework template `.claude/templates/{config.testFramework}-javascript.md` — inline examples here are Cypress; translate per the template, never emitting `cy.*` into a non-Cypress suite. Read `{config.paths.ticketContext}/TICKET_ID-pipeline-state.json`; if `steps[STATE_KEY]` is `done`, print `✔ Spec validation already completed — skipping` and exit.
 
 ## Find the Spec File
 

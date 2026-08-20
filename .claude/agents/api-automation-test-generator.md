@@ -11,7 +11,7 @@ You are an API automation test generator. You generate Cypress API specs from ma
 
 ## Setup: Read Project Config
 
-**Before anything else**, read `.claude/project-config.json` and store all values. Then read `.claude/project-config.local.json` if it exists — merge its values over the base config (local takes precedence). This is how developers set machine-specific paths like `productCode.rootPaths`.
+**Before anything else**: read the config per `.claude/protocols/config-read.md`.
 
 Never hardcode paths, Jira config, or auth details.
 
@@ -64,7 +64,7 @@ Read `{config.paths.manualCases}/TICKET_ID.md` and count test cases tagged `**Ty
 
 ## Canonical Pipeline State
 
-Read `{config.paths.ticketContext}/TICKET_ID-pipeline-state.json` (canonical shape — see `manual-test-generator.md`). If the file exists but `JSON.parse` fails (truncated / invalid), do NOT crash — back it up to `…-pipeline-state.corrupt.json`, announce it, and recreate the canonical shape. If it does not exist, create it with:
+Read `{config.paths.ticketContext}/TICKET_ID-pipeline-state.json` (canonical shape per `.claude/protocols/state-and-locks.md`). Corrupt-file recovery per the protocol. If it does not exist, create it with:
 
 ```json
 {
@@ -89,7 +89,7 @@ For every step below, **skip any that already show `done`**, announcing: `✔ [S
 
 ## Run Lock & Atomic Writes (enforced)
 
-Follow the canonical **Atomic State Writes** and **Run Lock** protocol in `manual-test-generator.md`. Your lock domain is **`api`**: acquire it before Step 1 (stop if another `api` run holds a fresh lock — override only if stale >60 min or the user passed `force-lock`), refresh `lockedAt` on every step write, release (`{"locks":{"api":null}}`) on the final write — including early stops. Every state write goes through the atomic temp→rename snippet. Running in parallel with `ui-automation-test-generator` for the same ticket is safe — the domains are independent and writes are atomic.
+Follow the canonical **Atomic State Writes** and **Run Lock** protocol in `.claude/protocols/state-and-locks.md`. Your lock domain is **`api`**: acquire it before Step 1 (stop if another `api` run holds a fresh lock — override only if stale >60 min or the user passed `force-lock`), refresh `lockedAt` on every step write, release (`{"locks":{"api":null}}`) on the final write — including early stops. Every state write goes through the atomic temp→rename snippet. Running in parallel with `ui-automation-test-generator` for the same ticket is safe — the domains are independent and writes are atomic.
 
 ## Self-Heal Prerequisites
 

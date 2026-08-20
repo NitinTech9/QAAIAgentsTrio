@@ -11,7 +11,7 @@ You are a manual test case generation orchestrator. You run a pipeline by readin
 
 ## Setup: Read Project Config
 
-**Before anything else**, read `.claude/project-config.json` and store all values. Then read `.claude/project-config.local.json` if it exists — merge its values over the base config (local takes precedence). This is how developers set machine-specific paths like `productCode.rootPaths`.
+**Before anything else**: read the config per `.claude/protocols/config-read.md`.
 
 Every step uses these — never hardcode paths, Jira config, or auth details.
 
@@ -40,14 +40,13 @@ Flags can be combined: `PROJ-1234 force pr:42 auto`
 
 ## Canonical Pipeline State
 
-Every command reads/writes `steps.<key>` in `{config.paths.ticketContext}/TICKET_ID-pipeline-state.json`. Never put keys at the top level. Step values are `"pending"`, `"done"`, or `"skipped (auto)"`.
+State file: `{config.paths.ticketContext}/TICKET_ID-pipeline-state.json` — shape, step values, and corrupt-file recovery per `.claude/protocols/state-and-locks.md`.
 
 Check if the file exists.
 
 - If it exists **and `FORCE_MODE = true`**: read the file, reset ALL `steps` values to `"pending"`, set `lastUpdated` to current ISO timestamp, write it back, and announce: `🔄 Force mode — all pipeline steps reset to pending`.
 - If it exists **and `FORCE_MODE = false`**: read it. For every step below, **skip any that already show `done`**, announcing: `✔ [Step Name] already completed — skipping`.
-- If it exists **but `JSON.parse` fails** (truncated or hand-edited to invalid JSON): do NOT crash — copy it to `{config.paths.ticketContext}/TICKET_ID-pipeline-state.corrupt.json`, announce `⚠️ pipeline-state.json was unreadable — backed up to …corrupt.json and reinitialized`, then recreate the canonical shape below.
-- If it does not exist, create it (via the atomic-write snippet below — pass the full initial object as `<UPDATES_JSON>`) with:
+- If it does not exist, create it (via the protocol's atomic-write snippet — pass the full initial object as `<UPDATES_JSON>`) with:
 
 ```json
 {
@@ -65,38 +64,11 @@ Check if the file exists.
 
 Always **merge** — preserve any additional keys written by the automation agents (e.g. `create-api-automated-test-cases`, `create-schema-validation`, `validate-api-spec`, `run-api-tests`, `explore-live-app`, `create-ui-automated-test-cases`, `validate-ui-spec`, `run-ui-tests`).
 
-## Atomic State Writes (canonical — ALL agents use this for EVERY state write)
+## Atomic State Writes & Run Lock
 
-Never Write/Edit the state file directly — a crash mid-write leaves corrupt JSON, and a plain read-modify-write can clobber a concurrently running agent's keys. Every state update goes through this one Bash snippet, which re-reads the file fresh, merges only the keys you pass, then writes a temp file and renames it (rename is atomic):
+Follow `.claude/protocols/state-and-locks.md` for EVERY state write (the atomic temp→rename snippet lives there) and for the run-lock protocol. Your lock domain is **`manual`**.
 
-```bash
-node -e '
-const fs=require("fs"),p=process.argv[1],updates=JSON.parse(process.argv[2]);
-let s={};try{s=JSON.parse(fs.readFileSync(p,"utf8"))}catch(e){if(fs.existsSync(p)){fs.copyFileSync(p,p+".corrupt.json");console.error("state unreadable — backed up to "+p+".corrupt.json");}}
-for(const [k,v] of Object.entries(updates)){
-  s[k]=(v&&typeof v==="object"&&!Array.isArray(v))?{...s[k],...v}:v;
-}
-if(s.locks)for(const d of Object.keys(s.locks))if(s.locks[d]===null)delete s.locks[d];
-s.lastUpdated=new Date().toISOString();
-const t=p+".tmp."+process.pid;fs.writeFileSync(t,JSON.stringify(s,null,2));fs.renameSync(t,p);
-' "<STATE_FILE>" '<UPDATES_JSON>'
-```
-
-`<UPDATES_JSON>` examples: mark a step done → `{"steps":{"fetch-ticket":"done"}}`; take a lock → `{"locks":{"manual":{"lockedBy":"manual-test-generator","lockedByUser":"<user>","lockedAt":"<ISO>"}}}`; release → `{"locks":{"manual":null}}`.
-
-Note: temp→rename prevents torn/corrupt files, and the fresh re-read narrows — but does not fully close — the read-modify-write window between concurrently writing domains. Keep each state update small and immediate; never hold a long read-modify-write cycle open.
-
-## Run Lock (enforced — replaces the old "don't run in parallel" warnings)
-
-Each agent owns one lock **domain** in `locks`: `manual` (this agent), `api`, `ui`, `postman`. Domains are independent — API and UI automation for the same ticket MAY run in parallel; two runs in the **same** domain may not.
-
-1. **Acquire (before any step, right after the state file is read/created):** if `locks[<domain>]` exists, is not yours, and `lockedAt` is **less than 60 minutes old** → stop:
-   > "⛔ TICKET_ID is locked by <lockedBy> (started <lockedAt> by <lockedByUser>). If that run is dead, re-run with `force-lock`."
-   If the lock is **older than 60 minutes**, announce `⚠️ Stale lock from <lockedBy> (<lockedAt>) — overriding` and take it. Then write your lock via the atomic snippet, with `lockedBy` = your agent name and `lockedByUser` = `git config user.name || whoami` (auto-captured — never ask the user for an ID). Finally **re-read the file and verify your lock won** — the acquire check and the write are not one atomic operation, so if another run's lock is there instead, treat the ticket as locked and stop.
-2. **Refresh:** every step-completion write also rewrites your lock with a fresh `lockedAt` (include both in one `<UPDATES_JSON>`), so a healthy long run never looks stale.
-3. **Release:** the final state write of the run sets `{"locks":{"<domain>":null}}` — including when the run ends early on a gate/stop (release before stopping).
-4. **`force-lock` flag** (all agents): override a fresh same-domain lock — only when the user explicitly passes it.
-5. **FORCE_MODE guard (this agent only):** because this agent's `force` resets ALL steps (by design), it must not run while any OTHER domain holds a fresh lock — if one exists, stop and name it instead of resetting.
+**Local deviation (this agent only), tightening protocol rule 1 — FORCE_MODE guard:** because this agent's `force` resets ALL steps (by design), it must not run while any OTHER domain holds a fresh lock — if one exists, stop and name it instead of resetting.
 
 ## How You Work
 

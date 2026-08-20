@@ -62,9 +62,9 @@ Map each endpoint to its module folder. Keep this table in sync with your suite'
 
 Before any of the workflows below, read `cypress/knowledge/` for the endpoint(s) in scope and let it
 shape the spec (full protocol in `cypress/knowledge/_README.md`):
-- `api-behavior-notes.json` — `known_500_bugs`, `endpoint_quirks`, `auth_behavior`. If the
-  endpoint is a **documented 5xx bug**, don't assert 200 and never accept the 5xx; apply known auth
-  quirks (many GETs return 200 without auth → don't assert 403) and param requirements.
+- `api-behavior-notes.json` — apply per `.claude/protocols/knowledge-protocol.md` (fresh+ticketed
+  notes steer generation; stale/ticket-less = re-verify, never silently skip); apply known auth
+  quirks and param requirements.
 - `api-dependency-map.json` (`modules`) — reuse documented tables, data-source query, auth role, and
   cleanup order for `before()`/`after()`.
 - `failure-patterns.json` (`patterns`) — avoid known `FP-###` pitfalls up front.

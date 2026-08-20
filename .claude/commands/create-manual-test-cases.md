@@ -12,7 +12,7 @@ Let `TICKET_ID` = the first token of `$ARGUMENTS`.
 
 ## Setup: Read Project Config
 
-Read `.claude/project-config.json` and extract all values. Then read `.claude/project-config.local.json` if it exists — merge its values over the base config (local takes precedence). Extract all `project.paths.*` values.
+Read the config per `.claude/protocols/config-read.md`. Extract all `project.paths.*` values.
 
 ## Check Pipeline State
 
