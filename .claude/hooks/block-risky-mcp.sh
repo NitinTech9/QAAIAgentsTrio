@@ -72,10 +72,13 @@ if [ -z "$TOOL" ]; then
   echo "BLOCKED: could not determine the tool from the hook payload — the MCP guard fails closed on unparseable input." >&2
   exit 2
 fi
+# Server names vary by connection style (local `atlassian` vs claude.ai's
+# `claude_ai_Atlassian`) — match case-insensitively so neither slips through.
+TOOL_LC="$(printf '%s' "$TOOL" | tr '[:upper:]' '[:lower:]')"
 
 host_of() { printf '%s' "$1" | sed -E 's#^[a-zA-Z][a-zA-Z0-9+.-]*://##; s#[/:?"#].*$##'; }
 
-case "$TOOL" in
+case "$TOOL_LC" in
   *claude-in-chrome*navigate*|*claude-in-chrome*tabs_create*)
     URL="$(field '.tool_input.url')"
     [ -n "$URL" ] || exit 0                      # blank tab / no target
@@ -109,7 +112,7 @@ case "$TOOL" in
     exit 2
     ;;
 
-  *atlassian*addComment*|*atlassian*create*|*atlassian*edit*|*atlassian*update*|*atlassian*transition*|*atlassian*delete*)
+  *atlassian*addcomment*|*atlassian*create*|*atlassian*edit*|*atlassian*update*|*atlassian*transition*|*atlassian*delete*)
     KEY="$(field '.tool_input.issueIdOrKey')"
     if [ -n "${QA_ACTIVE_TICKET:-}" ] && [ -n "$KEY" ] && [ "$KEY" != "$QA_ACTIVE_TICKET" ]; then
       echo "BLOCKED: tracker write targets '$KEY' but this run is scoped to '$QA_ACTIVE_TICKET' (QA_ACTIVE_TICKET). A stray or duplicated write to another ticket is exactly what this guard exists to stop." >&2

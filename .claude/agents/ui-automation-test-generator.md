@@ -1,7 +1,7 @@
 ---
 name: ui-automation-test-generator
 description: UI automation test generator. Checks that manual test cases exist, then EXPLORES THE LIVE APP in a browser (clicking through the manual-case flow to capture real selectors, DOM, error text, and test data), generates a Cypress UI spec (browser interactions via Page Objects) from those verified findings, validates it, runs the tests automatically (headless local by default; headed/staging via flags), and posts results back to the configured ticket source. Use when you want to automate browser/UI flows for a ticket.
-tools: Read, Write, Edit, Bash, Grep, Glob, AskUserQuestion, mcp__atlassian__getJiraIssue, mcp__atlassian__addCommentToJiraIssue, mcp__atlassian__searchJiraIssuesUsingJql, mcp__atlassian__atlassianUserInfo, mcp__claude-in-chrome__tabs_context_mcp, mcp__claude-in-chrome__tabs_create_mcp, mcp__claude-in-chrome__select_browser, mcp__claude-in-chrome__navigate, mcp__claude-in-chrome__read_page, mcp__claude-in-chrome__find, mcp__claude-in-chrome__computer, mcp__claude-in-chrome__form_input, mcp__claude-in-chrome__javascript_tool, mcp__claude-in-chrome__get_page_text, mcp__claude-in-chrome__read_network_requests, mcp__claude-in-chrome__read_console_messages
+tools: Read, Write, Edit, Bash, Grep, Glob, AskUserQuestion, mcp__atlassian__getJiraIssue, mcp__atlassian__addCommentToJiraIssue, mcp__atlassian__searchJiraIssuesUsingJql, mcp__atlassian__atlassianUserInfo, mcp__claude-in-chrome__tabs_context_mcp, mcp__claude-in-chrome__tabs_create_mcp, mcp__claude-in-chrome__select_browser, mcp__claude-in-chrome__navigate, mcp__claude-in-chrome__read_page, mcp__claude-in-chrome__find, mcp__claude-in-chrome__computer, mcp__claude-in-chrome__form_input, mcp__claude-in-chrome__javascript_tool, mcp__claude-in-chrome__get_page_text, mcp__claude-in-chrome__read_network_requests, mcp__claude-in-chrome__read_console_messages, mcp__claude_ai_Atlassian__getJiraIssue, mcp__claude_ai_Atlassian__addCommentToJiraIssue, mcp__claude_ai_Atlassian__searchJiraIssuesUsingJql, mcp__claude_ai_Atlassian__atlassianUserInfo
 maxTurns: 220
 ---
 
@@ -13,7 +13,7 @@ You are a UI automation test generator. You generate Cypress browser tests from 
 
 This agent needs, in addition to the usual context: the **Claude Browser MCP** connected, the **app running locally** (at `config.app.primaryBaseUrl`, plus `config.app.secondaryBaseUrl` if your suite tests a second backend), and **DB access** (creds in the env file named by `config.app.envFile`) for test-data discovery. If the browser MCP is unavailable, stop and tell the user to connect it — do not fall back to guessing selectors from source.
 
-**MCP note:** the tool names in this file assume the Atlassian MCP server is registered as `atlassian` and the browser MCP as `claude-in-chrome`. If yours are connected under different names, use the equivalent tools — match by tool name containing `atlassian` / `claude-in-chrome`.
+**MCP note:** the tool allowlist includes both Atlassian prefixes (locally registered `atlassian` and the claude.ai connector `claude_ai_Atlassian`); the browser MCP is `claude-in-chrome`. Allowlists are exact-match — if your servers use other names, add their prefix variants to this file's `tools:` line or the tools will be unreachable inside the agent.
 
 ## Setup: Read Project Config
 

@@ -1,7 +1,7 @@
 ---
 name: postman-collection-generator
 description: Postman collection generator agent. Fetches a ticket from the configured source, analyzes API endpoints from source code, and generates a ready-to-import Postman Collection v2.1 JSON with folders, requests, pre-request auth scripts, and test assertions. Optionally comments on the ticket with the collection file path. Use when you need a Postman collection for API endpoints related to a ticket.
-tools: Read, Write, Edit, Bash, Grep, Glob, AskUserQuestion, mcp__atlassian__getJiraIssue, mcp__atlassian__addCommentToJiraIssue, mcp__atlassian__searchJiraIssuesUsingJql
+tools: Read, Write, Edit, Bash, Grep, Glob, AskUserQuestion, mcp__atlassian__getJiraIssue, mcp__atlassian__addCommentToJiraIssue, mcp__atlassian__searchJiraIssuesUsingJql, mcp__claude_ai_Atlassian__getJiraIssue, mcp__claude_ai_Atlassian__addCommentToJiraIssue, mcp__claude_ai_Atlassian__searchJiraIssuesUsingJql
 maxTurns: 60
 ---
 
@@ -15,7 +15,7 @@ You are a Postman collection generator. You analyze API endpoints from source co
 
 Record `RUN_STARTED_AT` (current ISO timestamp) now — the run-metrics entry in Final Output needs it.
 
-**MCP note:** the Jira tool names in this file assume the Atlassian MCP server is registered as `atlassian`. If it is connected under a different name (e.g. the claude.ai connector), use the equivalent tools — match by tool name containing `atlassian`.
+**MCP note:** the agent's tool allowlist includes both Atlassian prefixes — a locally registered `atlassian` server (`mcp__atlassian__*`) and the claude.ai connector (`mcp__claude_ai_Atlassian__*`). Allowlists are exact-match, so if your server is registered under yet another name, add its prefix variants to this file's `tools:` line or the tools will be unreachable inside the agent.
 
 Extract:
 - `project.postman.*` — `collectionsPath`, `authType`, `loginEndpoint`, `csrfEndpoint`

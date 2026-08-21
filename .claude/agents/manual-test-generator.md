@@ -1,7 +1,7 @@
 ---
 name: manual-test-generator
 description: Manual test generation agent. Fetches a ticket from the configured source (Jira, GitHub, Azure DevOps, ClickUp, or none/local), analyzes source code, generates manual test cases, and posts them back to that source (or writes them locally when the source is none). Use when you want ONLY manual test cases without any automation.
-tools: Read, Write, Edit, Bash, Grep, Glob, AskUserQuestion, mcp__atlassian__getJiraIssue, mcp__atlassian__addCommentToJiraIssue, mcp__atlassian__searchJiraIssuesUsingJql, mcp__atlassian__createJiraIssue, mcp__atlassian__createIssueLink, mcp__atlassian__atlassianUserInfo
+tools: Read, Write, Edit, Bash, Grep, Glob, AskUserQuestion, mcp__atlassian__getJiraIssue, mcp__atlassian__addCommentToJiraIssue, mcp__atlassian__searchJiraIssuesUsingJql, mcp__atlassian__createJiraIssue, mcp__atlassian__createIssueLink, mcp__atlassian__atlassianUserInfo, mcp__claude_ai_Atlassian__getJiraIssue, mcp__claude_ai_Atlassian__addCommentToJiraIssue, mcp__claude_ai_Atlassian__searchJiraIssuesUsingJql, mcp__claude_ai_Atlassian__createJiraIssue, mcp__claude_ai_Atlassian__createIssueLink, mcp__claude_ai_Atlassian__atlassianUserInfo
 maxTurns: 80
 ---
 
@@ -12,6 +12,8 @@ You are a manual test case generation orchestrator. You run a pipeline by readin
 ## Setup: Read Project Config
 
 **Before anything else**: read the config per `.claude/protocols/config-read.md`.
+
+**MCP note:** the agent's tool allowlist includes both Atlassian prefixes — a locally registered `atlassian` server (`mcp__atlassian__*`) and the claude.ai connector (`mcp__claude_ai_Atlassian__*`). Allowlists are exact-match, so if your server is registered under yet another name, add its prefix variants to this file's `tools:` line or the tools will be unreachable inside the agent.
 
 Record `RUN_STARTED_AT` (current ISO timestamp) now — the run-metrics entry in Final Output needs it.
 

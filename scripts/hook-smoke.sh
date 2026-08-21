@@ -44,5 +44,18 @@ tm '{"tool_name":"mcp__atlassian__addCommentToJiraIssue","tool_input":{"issueIdO
 tm '{"tool_name":"mcp__atlassian__addCommentToJiraIssue","tool_input":{"issueIdOrKey":"PROJ-1"}}' 0 "allows tracker write to the scoped ticket" "QA_ACTIVE_TICKET=PROJ-1"
 tm '{"tool_name":"mcp__atlassian__addCommentToJiraIssue","tool_input":{"issueIdOrKey":"PROJ-9"}}' 0 "logs (allows) unscoped tracker write when no QA_ACTIVE_TICKET"
 
+# claude.ai connector server name (claude_ai_Atlassian, capital A) — the guard must
+# match it case-insensitively, or granting write scopes opens a silent hole.
+tm '{"tool_name":"mcp__claude_ai_Atlassian__addCommentToJiraIssue","tool_input":{"issueIdOrKey":"PROJ-2"}}' 2 "blocks out-of-scope write via claude_ai_Atlassian server name" "QA_ACTIVE_TICKET=PROJ-1"
+tm '{"tool_name":"mcp__claude_ai_Atlassian__createJiraIssue","tool_input":{"issueIdOrKey":"PROJ-1"}}' 0 "allows scoped write via claude_ai_Atlassian server name" "QA_ACTIVE_TICKET=PROJ-1"
+
+# the tracker-write case must actually FIRE for both names (a matched write logs
+# "mcp-guard:" to stderr) — guards against the case-pattern silently not matching.
+for name in mcp__atlassian__addCommentToJiraIssue mcp__claude_ai_Atlassian__addCommentToJiraIssue; do
+  logged=$( (cd "$TMPPROJ" && printf '%s' "{\"tool_name\":\"$name\",\"tool_input\":{\"issueIdOrKey\":\"PROJ-9\"}}" | bash "$MCP_HOOK" 2>&1 >/dev/null) | grep -c "mcp-guard:" )
+  if [ "$logged" -ge 1 ]; then echo "PASS  block-risky-mcp.sh: tracker-write case fires for $name"
+  else echo "FAIL  block-risky-mcp.sh: tracker-write case did NOT fire for $name"; fail=1; fi
+done
+
 rm -rf "$TMPPROJ"
 exit $fail

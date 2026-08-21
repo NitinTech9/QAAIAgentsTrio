@@ -70,6 +70,15 @@ jobs:
           grep -q 'renameSync' .claude/protocols/state-and-locks.md || { echo "✗ atomic snippet missing from state-and-locks.md"; fail=1; }
           grep -q 'protocols/status-assertions.md' .claude/commands/validate-spec.md || { echo "✗ validate-spec.md does not reference protocols/status-assertions.md"; fail=1; }
           grep -q 'status-ambiguous' .claude/protocols/status-assertions.md && grep -q 'clearCookies' .claude/protocols/status-assertions.md || { echo "✗ status-assertions.md lost the escape hatch or fake-unauth trap"; fail=1; }
+          # Agent tool allowlists are exact-match: any agent using Atlassian tools must
+          # list BOTH server-name prefixes (local `atlassian` + claude.ai `claude_ai_Atlassian`),
+          # and the MCP guard matcher must cover both — or agents/guards silently miss.
+          for f in .claude/agents/*.md; do
+            if grep -q 'mcp__atlassian__' "$f"; then
+              grep -q 'mcp__claude_ai_Atlassian__' "$f" || { echo "✗ $f lists mcp__atlassian__ tools without the claude_ai_Atlassian variants"; fail=1; }
+            fi
+          done
+          grep -q 'claude_ai_Atlassian' .claude/settings.json || { echo "✗ settings.json MCP-guard matcher does not cover the claude_ai_Atlassian server name"; fail=1; }
           exit $fail
 
       - name: Knowledge audit surfaces stale ticket-less suppressions (selftest)
