@@ -69,6 +69,12 @@ must always be one of the three values above.
 Config: `ticketSource.jira` (falls back to `project.jira` for pre-1.0 configs).
 Requires the **Atlassian MCP** connection.
 
+**Tool naming (canonical rule — every command that names a Jira tool defers here).** Jira tool
+names in this guide and in the commands use the local server prefix `mcp__atlassian__*`. With the
+claude.ai connector the same tools live under `mcp__claude_ai_Atlassian__*`. The suffix (the part
+after the final `__`) is identical — resolve by **name-contains**: use whichever connected tool
+carries the same suffix, never fail just because the written prefix isn't present.
+
 **Cloud ID resolution.** `cloudId` may be a site domain or a UUID. If it is not a UUID,
 call `mcp__atlassian__getAccessibleAtlassianResources`, find the site whose `url` contains
 the configured domain, and use its `id`. If no match, pass the configured value through

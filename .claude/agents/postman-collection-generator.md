@@ -122,7 +122,7 @@ Handle feedback in a loop — update the collection file after each change, re-d
 
 ## Post to Jira (Optional)
 
-If the user approves **without** typing `skip jira`, post a comment using `mcp__atlassian__addCommentToJiraIssue`:
+If the user approves **without** typing `skip jira`, post a comment using `mcp__atlassian__addCommentToJiraIssue` (with the claude.ai connector the prefix is `mcp__claude_ai_Atlassian__` — resolve by suffix per the Tool-naming rule in `.claude/guides/ticket-sources.md`):
 - `cloudId`: `CLOUD_ID`
 - `issueIdOrKey`: `TICKET_ID`
 - `contentFormat`: `markdown`

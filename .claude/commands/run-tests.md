@@ -31,7 +31,7 @@ Extract:
 ## Resolve Cloud ID
 
 If `CLOUD_ID` does NOT look like a UUID (contains `.` or letters without hyphens):
-1. Call `mcp__atlassian__getAccessibleAtlassianResources` to list available sites
+1. Call `mcp__atlassian__getAccessibleAtlassianResources` (with the claude.ai connector the prefix is `mcp__claude_ai_Atlassian__` — resolve by suffix per the Tool-naming rule in `.claude/guides/ticket-sources.md`) to list available sites
 2. Find the site whose `url` contains the configured domain
 3. Use that site's `id` as the actual `CLOUD_ID`
 4. If no match, try the configured value as-is

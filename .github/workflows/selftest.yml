@@ -79,6 +79,12 @@ jobs:
             fi
           done
           grep -q 'claude_ai_Atlassian' .claude/settings.json || { echo "✗ settings.json MCP-guard matcher does not cover the claude_ai_Atlassian server name"; fail=1; }
+          # Prose too: any file naming an mcp__atlassian__ tool must also carry the
+          # claude_ai_Atlassian variant or the Tool-naming pointer — a single-name
+          # instruction sends agents after a tool that may not exist.
+          for f in $(grep -rl 'mcp__atlassian__' .claude/commands .claude/guides .claude/skills .claude/agents 2>/dev/null); do
+            grep -q 'claude_ai_Atlassian' "$f" || { echo "✗ $f names mcp__atlassian__ tools without the claude_ai_Atlassian variant/pointer"; fail=1; }
+          done
           exit $fail
 
       - name: Knowledge audit surfaces stale ticket-less suppressions (selftest)

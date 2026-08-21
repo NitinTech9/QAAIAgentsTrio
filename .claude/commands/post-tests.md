@@ -127,7 +127,7 @@ Repeat until approved.
 
 ## Fetch Parent Issue Fields
 
-Use `mcp__atlassian__getJiraIssue`:
+Use `mcp__atlassian__getJiraIssue` (with the claude.ai connector the prefix is `mcp__claude_ai_Atlassian__` — resolve by suffix per the Tool-naming rule in `.claude/guides/ticket-sources.md`):
 - `cloudId`: `CLOUD_ID`
 - `issueIdOrKey`: `TICKET_ID`
 - `fields`: `["components", "fixVersions", "priority", "labels"]`
