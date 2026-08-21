@@ -63,7 +63,7 @@ describe("Test Scenario: <Feature> API Tests", () => {
 ```
 
 - Mutations add `"x-csrf-token": csrfToken` to headers and MUST assert persistence via `cy.task("queryDb", ...)` afterward.
-- Unauthenticated tests call `cy.clearCookies()` first, then assert `oneOf([401, 403])`.
+- Unauthenticated tests call `cy.clearCookies()` first, then assert `oneOf([401, 403])`. Required on every API spec; a genuinely public endpoint opts out with `// access-control-exempt: <reason>` instead of omitting the test.
 - Always `failOnStatusCode: false`; assert status manually. Never accept 5xx; no `oneOf` mixing 2xx and 4xx.
 
 ## UI spec skeleton

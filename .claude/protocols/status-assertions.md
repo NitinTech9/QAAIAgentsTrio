@@ -12,6 +12,11 @@
   jar, so an "unauthenticated" request without `cy.clearCookies()` first STILL sends the cookie.
   A truly unauthenticated test calls `cy.clearCookies()` in the same `it()` and then asserts
   401/403.
+- **Every API spec needs that unauthenticated-rejection test — with one explicit escape hatch:**
+  a genuinely public endpoint (health check, status page — where rejection is not the correct
+  behavior) declares `// access-control-exempt: <reason>` in the spec. The reason is mandatory,
+  the exemption is printed as a note in every gate run (visible, never silent), and omitting the
+  test without the marker fails the `access-control` gate.
 
 Enforcement: `scripts/gates/` (`no-5xx`, `no-ambiguous`, `access-control`) — run identically by
 `/validate-spec`, the generated pre-commit hook, and CI. Comments cannot satisfy or trip these

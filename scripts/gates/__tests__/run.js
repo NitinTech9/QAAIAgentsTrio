@@ -71,6 +71,11 @@ check("access-control flags UI spec with no login-redirect test", runCli([uiFail
 const uiPass = tmpSpec("ui-pass.cy.js", `it("[T-1] TC: unauth redirects", { tags: ["@Regression"] }, () => { cy.clearCookies(); cy.visit("/orders"); cy.url().should("include", "/login"); });`);
 const up = runCli([uiPass]);
 check("access-control passes UI spec asserting redirect to /login", up.status === 0, up.stdout);
+const exOk = tmpSpec("exempt.cy.js", `// access-control-exempt: /api/health is intentionally unauthenticated (public liveness probe)\nit("[T-1] TC: health returns 200", { tags: ["@PR"] }, () => { cy.api({ url: "/api/health", failOnStatusCode: false }).then((r) => { expect(r.status).to.equal(200); }); });`);
+const eres = runCli([exOk]);
+check("access-control-exempt with a reason passes AND is reported as a note", eres.status === 0 && /access-control exempt/.test(eres.stdout), eres.stdout);
+const exBad = tmpSpec("exempt-bad.cy.js", `// access-control-exempt:\nit("[T-1] TC", { tags: ["@PR"] }, () => { cy.api({ url: "/x", failOnStatusCode: false }).then((r) => { expect(r.status).to.equal(200); }); });`);
+check("access-control-exempt WITHOUT a reason still flags", runCli([exBad]).stdout.includes("[access-control]"));
 
 // 4. no-credentials (Check 7) — both directions
 const creds = tmpSpec("creds.cy.js", `const password = "hunter2secret";\nit("[T-1] TC", { tags: ["@PR"] }, () => { cy.api({ url: "postgres://qa:hunter2@db/x", failOnStatusCode: false }); });` + UNAUTH);

@@ -10,11 +10,26 @@ const { itBlocks } = require("./lib");
 // falls back to content sniffing (cy.api => api, cy.visit => ui) for files
 // outside both (e.g. the selftest fixture corpus). Schema-validation specs are
 // exempt (they assert response shape, not authorization).
+//
+// Escape hatch for genuinely PUBLIC endpoints (health checks, status pages —
+// where an unauthenticated-rejection test is not applicable because rejection
+// is not the correct behavior): a `// access-control-exempt: <reason>` comment
+// anywhere in the spec. The reason is mandatory, the exemption is reported as
+// a note (visible, never silent), and like status-ambiguous it is read from
+// the RAW source (ctx.raw) because the hatch IS a comment.
 module.exports = {
     name: "access-control",
     check(src, ctx) {
         const file = (ctx && ctx.file) || "";
         if (/schema-validation/.test(file)) return [];
+        const raw = (ctx && ctx.raw) || src;
+        const ex = raw.match(/access-control-exempt:[ \t]*(\S[^\n]*)/);
+        if (ex) {
+            if (ctx && ctx.notes) ctx.notes.push(`access-control exempt (${file}): ${ex[1].trim()} — verify the endpoint really is public`);
+            return [];
+        }
+        if (/access-control-exempt/.test(raw))
+            return [{ line: 0, message: "access-control-exempt marker without a reason — the exemption must say WHY the endpoint is public (// access-control-exempt: <reason>)" }];
         const paths = (ctx && ctx.paths) || {};
         let mode = null;
         if (paths.apiTests && file.includes(paths.apiTests)) mode = "api";

@@ -44,7 +44,7 @@ The load-bearing rules (the mechanical ones are enforced by `scripts/gates/` —
 - **Never accept 5xx** in a status assertion, and no ambiguous `oneOf([2xx, 4xx])` — a test must be able to fail. A pre-commit hook and `/validate-spec` enforce this on new/changed specs.
 - **DB assertion on every mutation** (POST/PUT/DELETE) via the Cypress tasks to prove persistence.
 - **Schema validation spec per API**, in `cypress/e2e/API/schema-validation/{primary,secondary}/`, with the schema JSON under `cypress/fixtures/schemas/`.
-- Per endpoint, cover where applicable: positive, schema, DB assertion (mutations), negative (400/404), and unauthenticated-rejected.
+- Per endpoint, cover: positive, schema, DB assertion (mutations), negative (400/404), and unauthenticated-rejected. The auth test is enforced on every API spec by the `access-control` gate — a genuinely public endpoint (health check, status page) opts out explicitly with `// access-control-exempt: <reason>`, never by silently omitting the test.
 - Spec layout: one spec per endpoint where practical, `cypress/e2e/API/<module>/NN-verb-noun.cy.js`. Expanded multi-line `cy.api()` blocks.
 - Tags: `@PR`, `@Smoke`, `@Regression`, `@DataValidation`, `@SchemaValidation` (see `cypress/knowledge/tagging-strategy.json`).
 - File-upload tests use `cypress/fixtures/dummy.pdf`.

@@ -57,7 +57,7 @@ test.describe("Test Scenario: <Feature> API Tests", () => {
 ```
 
 - Mutations add `"x-csrf-token": session.csrfToken` to headers and MUST assert persistence via `await queryDb(...)` afterward.
-- Unauthenticated tests use a fresh context: `const anon = await pwRequest.newContext({ baseURL }); expect([401, 403]).toContain((await anon.get(url)).status());`
+- Unauthenticated tests use a fresh context: `const anon = await pwRequest.newContext({ baseURL }); expect([401, 403]).toContain((await anon.get(url)).status());` Required on every API spec; a genuinely public endpoint opts out with `// access-control-exempt: <reason>` instead of omitting the test.
 - Playwright's `request` fixture never throws on non-2xx — always assert `response.status()` explicitly. Never accept 5xx; no assertions mixing 2xx and 4xx outcomes.
 
 ## UI spec skeleton

@@ -34,7 +34,7 @@ Scan for unresolved placeholders (`[NN]`, `[endpoint]`, `[Feature Name]`, `<reso
 ### Check 4: Tags on Every it()
 ENFORCED via qa-gates (`tags-present`). Auto-fix by adding `{ tags: ["@Regression"] }` as a safe default, then re-run.
 ### Check 5: Unauthenticated / Access-Control Test Present
-ENFORCED via qa-gates (`access-control`) — the fake-unauthenticated trap and rationale are in `.claude/protocols/status-assertions.md`. Auto-fix by appending the standard test, then re-run.
+ENFORCED via qa-gates (`access-control`) — the fake-unauthenticated trap, rationale, and the public-endpoint escape hatch (`// access-control-exempt: <reason>`) are in `.claude/protocols/status-assertions.md`. Auto-fix by appending the standard test (or the reasoned exemption for a genuinely public endpoint), then re-run.
 ### Check 6: failOnStatusCode: false on cy.api() (API only)
 ENFORCED via qa-gates (`fail-on-status`). Auto-fix by adding it, then re-run.
 ### Check 7: No Hardcoded Credentials
